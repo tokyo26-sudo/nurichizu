@@ -293,7 +293,7 @@ svg#map:active { cursor: grabbing; }
 <header>
   <div class="logo">🗾</div>
   <div>
-    <div class="title">ぬりちず</div>
+    <div class="title">ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);letter-spacing:.05em;">v1.2.0</span></div>
     <div class="subtitle">市区町村 ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -315,12 +315,53 @@ svg#map:active { cursor: grabbing; }
       <div class="color-hint">地図をクリックすると この色でぬれるヨ</div>
     </div>
 
+    <!-- ラベル -->
+    <div class="sec">
+      <div class="sec-h">市区町村名</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--muted);">
+          <input type="checkbox" id="label-toggle" onchange="toggleLabel(this.checked)" style="accent-color:var(--accent);width:14px;height:14px;">
+          ひょうじ する
+        </label>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;" id="label-size-row">
+        <span style="font-size:11px;color:var(--muted);white-space:nowrap;">おおきさ</span>
+        <input type="range" id="label-size" min="1" max="8" step="0.5" value="2.5"
+          oninput="updateLabelSize(this.value)"
+          style="flex:1;accent-color:var(--accent);">
+        <span style="font-size:11px;color:var(--muted);min-width:24px;" id="label-size-val">2.5</span>
+      </div>
+    </div>
+
     <!-- けんえらび -->
     <div class="sec">
       <div class="sec-h">都道府県でしぼる</div>
       <select class="sel" id="pref-sel" onchange="filterPref(this.value)">
         <option value="">すべての都道府県</option>
       </select>
+      <div style="margin-top:8px;">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--muted);">
+          <input type="checkbox" id="mask-other" onchange="redraw()" style="accent-color:var(--accent);width:14px;height:14px;">
+          ほかのけんを ぜんぶ かくす
+        </label>
+      </div>
+    </div>
+
+    <!-- うみ・りく いろ -->
+    <div class="sec">
+      <div class="sec-h">はいけい いろ</div>
+      <div style="display:flex;flex-direction:column;gap:7px;">
+        <div class="color-row">
+          <div class="color-preview" id="seaPreview" onclick="document.getElementById('seaPicker').click()" style="background:#dce8f4;border-radius:4px;"></div>
+          <input type="color" id="seaPicker" value="#dce8f4" oninput="setSeaColor(this.value)">
+          <span style="font-size:12px;color:var(--muted);">うみ の いろ</span>
+        </div>
+        <div class="color-row">
+          <div class="color-preview" id="landPreview" onclick="document.getElementById('landPicker').click()" style="background:#e8e0d4;border-radius:4px;"></div>
+          <input type="color" id="landPicker" value="#e8e0d4" oninput="setLandColor(this.value)">
+          <span style="font-size:12px;color:var(--muted);">りく の いろ</span>
+        </div>
+      </div>
     </div>
 
     <!-- セーブ/ロード -->
@@ -397,8 +438,35 @@ function setCurrentColor(c) {
 // =====================================================
 let features = [];
 let topoData = null;
-let paintMap = new Map(); // code → color
+let paintMap = new Map();
 let currentPrefFilter = '';
+let showLabel = false;
+let labelSize = 2.5;
+let seaColor = '#dce8f4';
+let landColor = '#e8e0d4';
+
+function setSeaColor(c) {
+  seaColor = c;
+  document.getElementById('seaPreview').style.background = c;
+  document.getElementById('map-wrap').style.background = c;
+}
+function setLandColor(c) {
+  landColor = c;
+  document.getElementById('landPreview').style.background = c;
+  redraw();
+}
+
+function toggleLabel(on) {
+  showLabel = on;
+  document.getElementById('label-size-row').style.opacity = on ? '1' : '0.4';
+  gLabels.style('display', on ? null : 'none');
+}
+
+function updateLabelSize(val) {
+  labelSize = parseFloat(val);
+  document.getElementById('label-size-val').textContent = val;
+  gLabels.selectAll('text').attr('font-size', labelSize);
+}
 
 function getCode(f) { return f.properties?.N03_007 || ''; }
 function getPref(f) { return f.properties?.N03_001 || '所属未定地'; }
@@ -477,7 +545,6 @@ function initSvg() {
       gMuni.attr('transform', ev.transform);
       gLabels.attr('transform', ev.transform);
       const scale = ev.transform.k;
-      const showLabel = scale > 6;
       gLabels.style('display', showLabel ? null : 'none');
       // ズームに応じてボーダーの太さ調整
       gMuni.selectAll('path')
@@ -496,16 +563,20 @@ function initProj() {
 
 function redraw() {
   if (!features.length) return;
+  const maskOther = document.getElementById('mask-other')?.checked && currentPrefFilter;
   gMuni.selectAll('path')
     .attr('fill', d => {
       const code = getCode(d);
       const color = paintMap.get(code);
+      if (currentPrefFilter && getPref(d) !== currentPrefFilter) {
+        return maskOther ? 'none' : (color || 'rgba(0,0,0,0.04)');
+      }
       if (color) return color;
-      // フィルタ中はほかのけん うすく
-      if (currentPrefFilter && getPref(d) !== currentPrefFilter) return 'rgba(0,0,0,0.04)';
-      return '#e8e0d4';
+      return landColor;
     })
     .attr('stroke', d => {
+      const maskOther2 = document.getElementById('mask-other')?.checked && currentPrefFilter;
+      if (maskOther2 && getPref(d) !== currentPrefFilter) return 'none';
       if (currentPrefFilter && getPref(d) !== currentPrefFilter) return 'rgba(0,0,0,0.05)';
       return 'rgba(100,80,60,0.25)';
     });
@@ -518,7 +589,7 @@ function buildMap() {
     .data(features)
     .enter().append('path')
     .attr('d', path)
-    .attr('fill', d => paintMap.get(getCode(d)) || '#e8e0d4')
+    .attr('fill', d => paintMap.get(getCode(d)) || landColor)
     .attr('stroke', 'rgba(100,80,60,0.25)')
     .attr('stroke-width', 0.5)
     .style('vector-effect', 'non-scaling-stroke')
@@ -539,8 +610,13 @@ function buildMap() {
       ev.stopPropagation();
       const code = getCode(d);
       if (!code) return;
-      paintMap.set(code, currentColor);
-      d3.select(this).attr('fill', currentColor);
+      if (paintMap.has(code) && paintMap.get(code) === currentColor) {
+        paintMap.delete(code);
+        d3.select(this).attr('fill', currentPrefFilter && getPref(d) !== currentPrefFilter ? 'rgba(0,0,0,0.04)' : landColor);
+      } else {
+        paintMap.set(code, currentColor);
+        d3.select(this).attr('fill', currentColor);
+      }
       updateSidebar();
       updateStats();
     });
@@ -555,7 +631,7 @@ function buildMap() {
     .attr('text-anchor', 'middle')
     .attr('dominant-baseline', 'central')
     .attr('pointer-events', 'none')
-    .attr('font-size', 2.5)
+    .attr('font-size', labelSize)
     .style('font-family', 'Hiragino Kaku Gothic ProN, sans-serif')
     .style('fill', 'rgba(40,30,20,0.65)')
     .text(d => getName(d));
