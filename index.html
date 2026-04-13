@@ -297,7 +297,7 @@ svg#map:active { cursor: grabbing; }
 <header>
   <div class="logo">🗾</div>
   <div>
-    <div class="title">ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);letter-spacing:.05em;">v1.4.4</span></div>
+    <div class="title">ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);letter-spacing:.05em;">v1.4.5</span></div>
     <div class="subtitle">市区町村 ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -1098,8 +1098,10 @@ function setRectMode(mode) {
   // ズームを はずす
   svg.on('.zoom', null);
 
-  // オーバーレイ を ぜんめんに ひろげる
+  // オーバーレイ を ぜんめんに ひろげて SVG の いちばんうえに もってくる
   const overlay = document.getElementById('drag-overlay');
+  svg.node().appendChild(overlay);
+  svg.node().appendChild(selectRect); // select-rect も うえに
   overlay.setAttribute('width', W);
   overlay.setAttribute('height', H);
   overlay.style.display = null;
