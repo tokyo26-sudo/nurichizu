@@ -293,7 +293,7 @@ svg#map:active { cursor: grabbing; }
 <header>
   <div class="logo">🗾</div>
   <div>
-    <div class="title">ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);letter-spacing:.05em;">v1.3.2</span></div>
+    <div class="title">ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);letter-spacing:.05em;">v1.3.3</span></div>
     <div class="subtitle">市区町村 ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -714,7 +714,7 @@ function initSvg() {
   gLabels = svg.append('g').attr('class', 'g-labels').style('display','none');
 
   zoomBehavior = d3.zoom()
-    .scaleExtent([0.5, 40])
+    .scaleExtent([0.5, 500])
     .on('zoom', ev => {
       currentTransform = ev.transform;
       gMuni.attr('transform', ev.transform);
