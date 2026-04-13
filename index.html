@@ -297,7 +297,7 @@ svg#map:active { cursor: grabbing; }
 <header>
   <div class="logo">🗾</div>
   <div>
-    <div class="title">ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);letter-spacing:.05em;">v1.4.5</span></div>
+    <div class="title">ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);letter-spacing:.05em;">v1.4.6</span></div>
     <div class="subtitle">市区町村 ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -439,14 +439,14 @@ svg#map:active { cursor: grabbing; }
       <button class="btn" onclick="resetDefaults()">↩ デフォルトの いろ設定に もどす</button>
     </div>
 
-    <!-- くけい せんたく -->
+    <!-- まとめて塗るモード -->
     <div class="sec">
-      <div class="sec-h">くけい せんたく</div>
+      <div class="sec-h">まとめて塗るモード</div>
       <div style="display:flex;gap:6px;">
-        <button class="btn" id="btn-rect-paint" onclick="setRectMode('paint')" style="flex:1;">🟥 ぬる</button>
-        <button class="btn" id="btn-rect-erase" onclick="setRectMode('erase')" style="flex:1;">⬜ けす</button>
+        <button class="btn" id="btn-rect-paint" onclick="setRectMode('paint')" style="flex:1;">🖌️ ぬる</button>
+        <button class="btn" id="btn-rect-erase" onclick="setRectMode('erase')" style="flex:1;">🗑️ けす</button>
       </div>
-      <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5;" id="rect-hint">ボタン を おして 地図上を ドラッグするヨ</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5;" id="rect-hint">ボタンを押して、地図上をドラッグするとまとめて塗れるヨ</div>
     </div>
 
     <!-- キャプチャ -->
@@ -1086,14 +1086,14 @@ function setRectMode(mode) {
     svg.call(zoomBehavior);
     if (window._rectMouseMove) window.removeEventListener('mousemove', window._rectMouseMove);
     if (window._rectMouseUp)   window.removeEventListener('mouseup',   window._rectMouseUp);
-    document.getElementById('rect-hint').textContent = 'ボタン を おして 地図上を ドラッグするヨ';
+    document.getElementById('rect-hint').textContent = 'ボタンを押して、地図上をドラッグするとまとめて塗れるヨ';
     return;
   }
   rectMode = mode;
   document.getElementById('btn-rect-paint').classList.toggle('active', mode === 'paint');
   document.getElementById('btn-rect-erase').classList.toggle('active', mode === 'erase');
   svg.style('cursor', 'crosshair');
-  document.getElementById('rect-hint').textContent = mode === 'paint' ? '地図上を ドラッグして ぬるヨ' : '地図上を ドラッグして けすヨ';
+  document.getElementById('rect-hint').textContent = mode === 'paint' ? 'ボタンを押して、地図上をドラッグするとまとめて塗れるヨ' : 'ボタンを押して、地図上をドラッグするとまとめて消せるヨ';
 
   // ズームを はずす
   svg.on('.zoom', null);
