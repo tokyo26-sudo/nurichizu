@@ -249,6 +249,8 @@ svg#map:active { cursor: grabbing; }
   }
   aside.open { left: 0; }
   .subtitle { display: none; }
+  .zoom-ctrl { bottom: calc(env(safe-area-inset-bottom, 0px) + 16px); }
+  #map-wrap { padding-bottom: env(safe-area-inset-bottom, 0px); }
 }
 
 /* ツールチップ */
@@ -347,7 +349,7 @@ svg#map:active { cursor: grabbing; }
   </button>
   <div class="logo">🗾</div>
   <div>
-    <div class="title">ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);letter-spacing:.05em;">v1.5.0</span></div>
+    <div class="title">ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);letter-spacing:.05em;">v1.5.1</span></div>
     <div class="subtitle">市区町村 ぬりわけマップ</div>
   </div>
   <div class="hd-right">
