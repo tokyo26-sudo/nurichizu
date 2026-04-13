@@ -297,7 +297,7 @@ svg#map:active { cursor: grabbing; }
 <header>
   <div class="logo">🗾</div>
   <div>
-    <div class="title">ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);letter-spacing:.05em;">v1.4.0</span></div>
+    <div class="title">ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);letter-spacing:.05em;">v1.4.1</span></div>
     <div class="subtitle">市区町村 ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -1081,7 +1081,8 @@ function setRectMode(mode) {
     document.getElementById('btn-rect-paint').classList.remove('active');
     document.getElementById('btn-rect-erase').classList.remove('active');
     svg.style('cursor', null);
-    svg.on('.rectdrag', null);
+    svg.on('.drag', null);
+    svg.call(zoomBehavior);
     document.getElementById('rect-hint').textContent = 'ボタン を おして 地図上を ドラッグするヨ';
     return;
   }
@@ -1091,10 +1092,11 @@ function setRectMode(mode) {
   svg.style('cursor', 'crosshair');
   document.getElementById('rect-hint').textContent = mode === 'paint' ? '地図上を ドラッグして ぬるヨ' : '地図上を ドラッグして けすヨ';
 
+  // ズームを さきに はずす
+  svg.on('.zoom', null);
+
   const drag = d3.drag()
     .on('start', ev => {
-      // ズームを一時的に無効化
-      svg.on('.zoom', null);
       const [mx, my] = d3.pointer(ev, svg.node());
       rectStart = { x: mx, y: my };
       selectRect
@@ -1113,7 +1115,6 @@ function setRectMode(mode) {
     })
     .on('end', ev => {
       selectRect.style('display', 'none');
-      svg.call(zoomBehavior);
       if (!rectStart) return;
       const [mx, my] = d3.pointer(ev, svg.node());
       const rx0 = Math.min(rectStart.x, mx);
@@ -1123,7 +1124,6 @@ function setRectMode(mode) {
       rectStart = null;
       if (rx1 - rx0 < 4 && ry1 - ry0 < 4) return;
 
-      // SVG ざひょう → ちず ざひょう に ぎゃくへんかん
       const t = currentTransform;
       const toMap = ([x, y]) => [(x - t.x) / t.k, (y - t.y) / t.k];
       const [lx0, ly0] = toMap([rx0, ry0]);
