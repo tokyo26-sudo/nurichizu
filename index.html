@@ -324,12 +324,19 @@ svg#map:active { cursor: grabbing; }
           ひょうじ する
         </label>
       </div>
-      <div style="display:flex;align-items:center;gap:8px;" id="label-size-row">
-        <span style="font-size:11px;color:var(--muted);white-space:nowrap;">おおきさ</span>
-        <input type="range" id="label-size" min="1" max="8" step="0.5" value="2.5"
-          oninput="updateLabelSize(this.value)"
-          style="flex:1;accent-color:var(--accent);">
-        <span style="font-size:11px;color:var(--muted);min-width:24px;" id="label-size-val">2.5</span>
+      <div style="display:flex;flex-direction:column;gap:8px;" id="label-size-row">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:11px;color:var(--muted);white-space:nowrap;">おおきさ</span>
+          <input type="range" id="label-size" min="0.25" max="8" step="0.25" value="1.0"
+            oninput="updateLabelSize(this.value)"
+            style="flex:1;accent-color:var(--accent);">
+          <span style="font-size:11px;color:var(--muted);min-width:28px;" id="label-size-val">1.0</span>
+        </div>
+        <div class="color-row">
+          <div class="color-preview" id="labelColorPreview" onclick="document.getElementById('labelColorPicker').click()" style="background:#28201480;border-radius:4px;background-color:rgba(40,32,20,0.65);"></div>
+          <input type="color" id="labelColorPicker" value="#281e10" oninput="updateLabelColor(this.value)">
+          <span style="font-size:12px;color:var(--muted);">もじの いろ</span>
+        </div>
       </div>
     </div>
 
@@ -425,6 +432,7 @@ svg#map:active { cursor: grabbing; }
       <button class="btn" onclick="document.getElementById('loadIn').click()">📂 ロード（JSON）</button>
       <input type="file" id="loadIn" accept=".json" style="display:none" onchange="loadData(event)">
       <button class="btn" onclick="clearAll()">🗑 全部クリア</button>
+      <button class="btn" onclick="resetDefaults()">↩ デフォルトの いろ設定に もどす</button>
     </div>
 
     <!-- ぬった市区町村リスト -->
@@ -495,7 +503,8 @@ let topoData = null;
 let paintMap = new Map();
 let currentPrefFilter = '';
 let showLabel = false;
-let labelSize = 2.5;
+let labelSize = 1.0;
+let labelColor = 'rgba(40,32,20,0.65)';
 let seaColor = '#dce8f4';
 let landColor = '#e8e0d4';
 let borderMuniColor = '#b09080';
@@ -517,11 +526,15 @@ function redrawBorders() {
   const k = currentTransform.k;
   const objKey = Object.keys(topoData.objects)[0];
   const obj = topoData.objects[objKey];
+  const maskOther = document.getElementById('mask-other')?.checked && currentPrefFilter;
 
-  // 市区町村さかい（ぜんぶの さかい）
+  // 市区町村さかい
   gBorderMuni.selectAll('path').remove();
+  const muniFilter = maskOther
+    ? (a, b) => a !== b && (a.properties?.N03_001 || '') === currentPrefFilter && (b.properties?.N03_001 || '') === currentPrefFilter
+    : (a, b) => a !== b;
   gBorderMuni.append('path')
-    .datum(topojson.mesh(topoData, obj, (a, b) => a !== b))
+    .datum(topojson.mesh(topoData, obj, muniFilter))
     .attr('d', path)
     .attr('fill', 'none')
     .attr('stroke', borderMuniColor)
@@ -529,13 +542,18 @@ function redrawBorders() {
     .attr('stroke-dasharray', borderMuniDash === 'none' ? null : borderMuniDash)
     .style('pointer-events', 'none');
 
-  // けんさかい（となりが ちがうけん の さかいだけ）
+  // けんさかい
   gBorderPref.selectAll('path').remove();
+  const prefFilter = maskOther
+    ? (a, b) => {
+        if (a === b) return false;
+        const pa = a.properties?.N03_001 || '';
+        const pb = b.properties?.N03_001 || '';
+        return pa !== pb && (pa === currentPrefFilter || pb === currentPrefFilter);
+      }
+    : (a, b) => a !== b && (a.properties?.N03_001 || '') !== (b.properties?.N03_001 || '');
   gBorderPref.append('path')
-    .datum(topojson.mesh(topoData, obj, (a, b) => {
-      if (a === b) return false;
-      return (a.properties?.N03_001 || '') !== (b.properties?.N03_001 || '');
-    }))
+    .datum(topojson.mesh(topoData, obj, prefFilter))
     .attr('d', path)
     .attr('fill', 'none')
     .attr('stroke', borderPrefColor)
@@ -563,8 +581,59 @@ function toggleLabel(on) {
 
 function updateLabelSize(val) {
   labelSize = parseFloat(val);
-  document.getElementById('label-size-val').textContent = val;
+  document.getElementById('label-size-val').textContent = parseFloat(val).toFixed(2).replace(/\.?0+$/, '');
   gLabels.selectAll('text').attr('font-size', labelSize);
+}
+
+function updateLabelColor(val) {
+  labelColor = val;
+  document.getElementById('labelColorPreview').style.backgroundColor = val;
+  gLabels.selectAll('text').style('fill', val);
+}
+
+const DEFAULTS = {
+  seaColor:        '#dce8f4',
+  landColor:       '#e8e0d4',
+  labelSize:       1.0,
+  labelColor:      'rgba(40,32,20,0.65)',
+  borderMuniColor: '#b09080',
+  borderMuniWidth: 0.4,
+  borderMuniDash:  'none',
+  borderPrefColor: '#503820',
+  borderPrefWidth: 1.5,
+  borderPrefDash:  'none',
+};
+
+function resetDefaults() {
+  // うみ・りく
+  setSeaColor(DEFAULTS.seaColor);
+  document.getElementById('seaPicker').value = DEFAULTS.seaColor;
+  setLandColor(DEFAULTS.landColor);
+  document.getElementById('landPicker').value = DEFAULTS.landColor;
+  // ラベル
+  labelSize = DEFAULTS.labelSize;
+  document.getElementById('label-size').value = DEFAULTS.labelSize;
+  document.getElementById('label-size-val').textContent = DEFAULTS.labelSize;
+  gLabels.selectAll('text').attr('font-size', DEFAULTS.labelSize);
+  labelColor = DEFAULTS.labelColor;
+  document.getElementById('labelColorPicker').value = '#281e10';
+  document.getElementById('labelColorPreview').style.backgroundColor = DEFAULTS.labelColor;
+  gLabels.selectAll('text').style('fill', DEFAULTS.labelColor);
+  // 市区町村さかい
+  setBorderMuniColor(DEFAULTS.borderMuniColor);
+  document.getElementById('borderMuniPicker').value = DEFAULTS.borderMuniColor;
+  setBorderMuniWidth(DEFAULTS.borderMuniWidth);
+  document.getElementById('border-muni-width').value = DEFAULTS.borderMuniWidth;
+  setBorderMuniDash(DEFAULTS.borderMuniDash);
+  document.getElementById('border-muni-dash').value = DEFAULTS.borderMuniDash;
+  // けんさかい
+  setBorderPrefColor(DEFAULTS.borderPrefColor);
+  document.getElementById('borderPrefPicker').value = DEFAULTS.borderPrefColor;
+  setBorderPrefWidth(DEFAULTS.borderPrefWidth);
+  document.getElementById('border-pref-width').value = DEFAULTS.borderPrefWidth;
+  setBorderPrefDash(DEFAULTS.borderPrefDash);
+  document.getElementById('border-pref-dash').value = DEFAULTS.borderPrefDash;
+  toast('デフォルトの いろ設定 に もどしたヨ！');
 }
 
 function getCode(f) { return f.properties?.N03_007 || ''; }
@@ -677,6 +746,13 @@ function redraw() {
       return landColor;
     })
     .attr('stroke', 'none');
+  redrawBorders();
+  // ラベル の マスク れんどう
+  if (showLabel) {
+    const maskOther2 = document.getElementById('mask-other')?.checked && currentPrefFilter;
+    gLabels.selectAll('text')
+      .style('display', d => maskOther2 && getPref(d) !== currentPrefFilter ? 'none' : null);
+  }
 }
 
 function buildMap() {
@@ -715,8 +791,9 @@ function buildMap() {
 
   // ラベル
   gLabels.selectAll('text').remove();
+  const maskOtherLabel = document.getElementById('mask-other')?.checked && currentPrefFilter;
   gLabels.selectAll('text')
-    .data(features)
+    .data(maskOtherLabel ? features.filter(f => getPref(f) === currentPrefFilter) : features)
     .enter().append('text')
     .attr('x', d => { try { return path.centroid(d)[0]; } catch(e) { return 0; } })
     .attr('y', d => { try { return path.centroid(d)[1]; } catch(e) { return 0; } })
@@ -725,7 +802,7 @@ function buildMap() {
     .attr('pointer-events', 'none')
     .attr('font-size', labelSize)
     .style('font-family', 'Hiragino Kaku Gothic ProN, sans-serif')
-    .style('fill', 'rgba(40,30,20,0.65)')
+    .style('fill', labelColor)
     .text(d => getName(d));
 
   buildPrefFilter();
