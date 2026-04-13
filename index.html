@@ -293,7 +293,7 @@ svg#map:active { cursor: grabbing; }
 <header>
   <div class="logo">🗾</div>
   <div>
-    <div class="title">ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);letter-spacing:.05em;">v1.3.0</span></div>
+    <div class="title">ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);letter-spacing:.05em;">v1.3.2</span></div>
     <div class="subtitle">市区町村 ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -521,6 +521,11 @@ function setBorderPrefColor(c) { borderPrefColor = c; document.getElementById('b
 function setBorderPrefWidth(v) { borderPrefWidth = parseFloat(v); document.getElementById('border-pref-width-val').textContent = v; redrawBorders(); }
 function setBorderPrefDash(v)  { borderPrefDash  = v; redrawBorders(); }
 
+function scaledDash(dash, k) {
+  if (!dash || dash === 'none') return null;
+  return dash.split(',').map(v => parseFloat(v) / k).join(',');
+}
+
 function redrawBorders() {
   if (!topoData || topoData.type !== 'Topology') return;
   const k = currentTransform.k;
@@ -539,7 +544,7 @@ function redrawBorders() {
     .attr('fill', 'none')
     .attr('stroke', borderMuniColor)
     .attr('stroke-width', borderMuniWidth / k)
-    .attr('stroke-dasharray', borderMuniDash === 'none' ? null : borderMuniDash)
+    .attr('stroke-dasharray', scaledDash(borderMuniDash, k))
     .style('pointer-events', 'none');
 
   // けんさかい
@@ -558,7 +563,7 @@ function redrawBorders() {
     .attr('fill', 'none')
     .attr('stroke', borderPrefColor)
     .attr('stroke-width', borderPrefWidth / k)
-    .attr('stroke-dasharray', borderPrefDash === 'none' ? null : borderPrefDash)
+    .attr('stroke-dasharray', scaledDash(borderPrefDash, k))
     .style('pointer-events', 'none');
 }
 
@@ -718,8 +723,12 @@ function initSvg() {
       gLabels.attr('transform', ev.transform);
       gLabels.style('display', showLabel ? null : 'none');
       const k = ev.transform.k;
-      gBorderMuni.selectAll('path').attr('stroke-width', borderMuniWidth / k);
-      gBorderPref.selectAll('path').attr('stroke-width', borderPrefWidth / k);
+      gBorderMuni.selectAll('path')
+        .attr('stroke-width', borderMuniWidth / k)
+        .attr('stroke-dasharray', scaledDash(borderMuniDash, k));
+      gBorderPref.selectAll('path')
+        .attr('stroke-width', borderPrefWidth / k)
+        .attr('stroke-dasharray', scaledDash(borderPrefDash, k));
     });
   svg.call(zoomBehavior);
 }
