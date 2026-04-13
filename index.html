@@ -6,6 +6,7 @@
 <title>ぬりちず</title>
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <script src="https://unpkg.com/topojson-client@3/dist/topojson-client.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
 :root {
   --bg: #f7f4ef;
@@ -63,8 +64,10 @@ aside {
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
-  overflow: hidden;
+  overflow-y: auto;
 }
+aside::-webkit-scrollbar { width: 3px; }
+aside::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 .sec {
   padding: 12px 14px;
   border-bottom: 1px solid var(--border);
@@ -149,6 +152,7 @@ input[type=color] {
   margin-top: 4px;
 }
 .btn:hover { border-color: var(--accent2); color: var(--accent); }
+.btn.active { background: var(--accent); color: white; border-color: var(--accent); }
 .btn-primary {
   background: var(--accent);
   color: white;
@@ -293,7 +297,7 @@ svg#map:active { cursor: grabbing; }
 <header>
   <div class="logo">🗾</div>
   <div>
-    <div class="title">ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);letter-spacing:.05em;">v1.3.3</span></div>
+    <div class="title">ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);letter-spacing:.05em;">v1.4.0</span></div>
     <div class="subtitle">市区町村 ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -327,7 +331,7 @@ svg#map:active { cursor: grabbing; }
       <div style="display:flex;flex-direction:column;gap:8px;" id="label-size-row">
         <div style="display:flex;align-items:center;gap:8px;">
           <span style="font-size:11px;color:var(--muted);white-space:nowrap;">おおきさ</span>
-          <input type="range" id="label-size" min="0.25" max="8" step="0.25" value="1.0"
+          <input type="range" id="label-size" min="0.05" max="8" step="0.05" value="1.0"
             oninput="updateLabelSize(this.value)"
             style="flex:1;accent-color:var(--accent);">
           <span style="font-size:11px;color:var(--muted);min-width:28px;" id="label-size-val">1.0</span>
@@ -435,6 +439,22 @@ svg#map:active { cursor: grabbing; }
       <button class="btn" onclick="resetDefaults()">↩ デフォルトの いろ設定に もどす</button>
     </div>
 
+    <!-- くけい せんたく -->
+    <div class="sec">
+      <div class="sec-h">くけい せんたく</div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn" id="btn-rect-paint" onclick="setRectMode('paint')" style="flex:1;">🟥 ぬる</button>
+        <button class="btn" id="btn-rect-erase" onclick="setRectMode('erase')" style="flex:1;">⬜ けす</button>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5;" id="rect-hint">ボタン を おして 地図上を ドラッグするヨ</div>
+    </div>
+
+    <!-- キャプチャ -->
+    <div class="sec">
+      <div class="sec-h">キャプチャ</div>
+      <button class="btn btn-primary" onclick="captureMap()">📷 がぞう で ほぞん（PNG）</button>
+    </div>
+
     <!-- ぬった市区町村リスト -->
     <div class="mlist-wrap" id="mlist-wrap">
       <div class="empty" id="mlist-empty">クリックして<br>市区町村を<br>ぬってみよう！</div>
@@ -444,7 +464,9 @@ svg#map:active { cursor: grabbing; }
 
   <div id="map-wrap">
     <div id="loading"><div class="spinner"></div>地図データ よみこみちゅう…</div>
-    <svg id="map"></svg>
+    <svg id="map">
+      <rect id="select-rect" fill="rgba(100,150,255,0.15)" stroke="#4070e0" stroke-width="1.5" stroke-dasharray="5,3" style="display:none;pointer-events:none;"></rect>
+    </svg>
     <div class="tooltip" id="tooltip">
       <div class="tt-name" id="tt-name"></div>
       <div class="tt-pref" id="tt-pref"></div>
@@ -1043,6 +1065,110 @@ async function init() {
     document.getElementById('loading').style.display = 'none';
   } catch(e) {
     document.getElementById('loading').innerHTML = '<div style="color:#c05020;font-size:13px;text-align:center">データ よみこみ しっぱいデスネ😢<br><small>ネットワーク かくにん してネ</small></div>';
+  }
+}
+
+// =====================================================
+// くけい せんたく
+// =====================================================
+let rectMode = null; // 'paint' | 'erase' | null
+let rectStart = null;
+const selectRect = document.getElementById('select-rect');
+
+function setRectMode(mode) {
+  if (rectMode === mode) {
+    rectMode = null;
+    document.getElementById('btn-rect-paint').classList.remove('active');
+    document.getElementById('btn-rect-erase').classList.remove('active');
+    svg.style('cursor', null);
+    svg.on('.rectdrag', null);
+    document.getElementById('rect-hint').textContent = 'ボタン を おして 地図上を ドラッグするヨ';
+    return;
+  }
+  rectMode = mode;
+  document.getElementById('btn-rect-paint').classList.toggle('active', mode === 'paint');
+  document.getElementById('btn-rect-erase').classList.toggle('active', mode === 'erase');
+  svg.style('cursor', 'crosshair');
+  document.getElementById('rect-hint').textContent = mode === 'paint' ? '地図上を ドラッグして ぬるヨ' : '地図上を ドラッグして けすヨ';
+
+  const drag = d3.drag()
+    .on('start', ev => {
+      // ズームを一時的に無効化
+      svg.on('.zoom', null);
+      const [mx, my] = d3.pointer(ev, svg.node());
+      rectStart = { x: mx, y: my };
+      selectRect
+        .attr('x', mx).attr('y', my)
+        .attr('width', 0).attr('height', 0)
+        .style('display', null);
+    })
+    .on('drag', ev => {
+      if (!rectStart) return;
+      const [mx, my] = d3.pointer(ev, svg.node());
+      const rx = Math.min(rectStart.x, mx);
+      const ry = Math.min(rectStart.y, my);
+      const rw = Math.abs(mx - rectStart.x);
+      const rh = Math.abs(my - rectStart.y);
+      selectRect.attr('x', rx).attr('y', ry).attr('width', rw).attr('height', rh);
+    })
+    .on('end', ev => {
+      selectRect.style('display', 'none');
+      svg.call(zoomBehavior);
+      if (!rectStart) return;
+      const [mx, my] = d3.pointer(ev, svg.node());
+      const rx0 = Math.min(rectStart.x, mx);
+      const ry0 = Math.min(rectStart.y, my);
+      const rx1 = Math.max(rectStart.x, mx);
+      const ry1 = Math.max(rectStart.y, my);
+      rectStart = null;
+      if (rx1 - rx0 < 4 && ry1 - ry0 < 4) return;
+
+      // SVG ざひょう → ちず ざひょう に ぎゃくへんかん
+      const t = currentTransform;
+      const toMap = ([x, y]) => [(x - t.x) / t.k, (y - t.y) / t.k];
+      const [lx0, ly0] = toMap([rx0, ry0]);
+      const [lx1, ly1] = toMap([rx1, ry1]);
+
+      let changed = false;
+      gMuni.selectAll('path').each(function(d) {
+        try {
+          const [[bx0,by0],[bx1,by1]] = path.bounds(d);
+          const cx = (bx0+bx1)/2, cy = (by0+by1)/2;
+          if (cx >= lx0 && cx <= lx1 && cy >= ly0 && cy <= ly1) {
+            const code = getCode(d);
+            if (!code) return;
+            if (rectMode === 'paint') {
+              paintMap.set(code, currentColor);
+              d3.select(this).attr('fill', currentColor);
+            } else {
+              paintMap.delete(code);
+              d3.select(this).attr('fill', currentPrefFilter && getPref(d) !== currentPrefFilter ? 'rgba(0,0,0,0.04)' : landColor);
+            }
+            changed = true;
+          }
+        } catch(e) {}
+      });
+      if (changed) { updateSidebar(); updateStats(); }
+    });
+
+  svg.call(drag);
+}
+
+// =====================================================
+// キャプチャ
+// =====================================================
+async function captureMap() {
+  toast('キャプチャ ちゅう… すこし まってネ');
+  try {
+    const wrap = document.getElementById('map-wrap');
+    const canvas = await html2canvas(wrap, { useCORS: true, scale: 2 });
+    const a = document.createElement('a');
+    a.download = 'nurichizu.png';
+    a.href = canvas.toDataURL('image/png');
+    a.click();
+    toast('キャプチャ できたヨ！');
+  } catch(e) {
+    toast('キャプチャ しっぱいデスネ…');
   }
 }
 
