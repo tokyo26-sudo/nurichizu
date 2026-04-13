@@ -297,7 +297,7 @@ svg#map:active { cursor: grabbing; }
 <header>
   <div class="logo">🗾</div>
   <div>
-    <div class="title">ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);letter-spacing:.05em;">v1.4.3</span></div>
+    <div class="title">ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);letter-spacing:.05em;">v1.4.4</span></div>
     <div class="subtitle">市区町村 ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -1084,6 +1084,8 @@ function setRectMode(mode) {
     svg.style('cursor', null);
     document.getElementById('drag-overlay').style.display = 'none';
     svg.call(zoomBehavior);
+    if (window._rectMouseMove) window.removeEventListener('mousemove', window._rectMouseMove);
+    if (window._rectMouseUp)   window.removeEventListener('mouseup',   window._rectMouseUp);
     document.getElementById('rect-hint').textContent = 'ボタン を おして 地図上を ドラッグするヨ';
     return;
   }
@@ -1118,7 +1120,7 @@ function setRectMode(mode) {
     e.preventDefault();
   };
 
-  overlay.onmousemove = (e) => {
+  window._rectMouseMove = (e) => {
     if (!dragging) return;
     const r = svg.node().getBoundingClientRect();
     const mx = e.clientX - r.left;
@@ -1129,7 +1131,7 @@ function setRectMode(mode) {
     selectRect.setAttribute('height', Math.abs(my - startY));
   };
 
-  overlay.onmouseup = (e) => {
+  window._rectMouseUp = (e) => {
     if (!dragging) return;
     dragging = false;
     selectRect.style.display = 'none';
@@ -1166,12 +1168,11 @@ function setRectMode(mode) {
     if (changed) { updateSidebar(); updateStats(); }
   };
 
-  overlay.onmouseleave = () => {
-    if (dragging) {
-      dragging = false;
-      selectRect.style.display = 'none';
-    }
-  };
+  window.addEventListener('mousemove', window._rectMouseMove);
+  window.addEventListener('mouseup', window._rectMouseUp);
+  overlay.onmousemove = null;
+  overlay.onmouseup = null;
+  overlay.onmouseleave = null;
 }
 
 // =====================================================
