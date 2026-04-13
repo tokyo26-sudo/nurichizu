@@ -297,7 +297,7 @@ svg#map:active { cursor: grabbing; }
 <header>
   <div class="logo">🗾</div>
   <div>
-    <div class="title">ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);letter-spacing:.05em;">v1.4.2</span></div>
+    <div class="title">ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);letter-spacing:.05em;">v1.4.3</span></div>
     <div class="subtitle">市区町村 ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -1110,11 +1110,11 @@ function setRectMode(mode) {
     const r = svg.node().getBoundingClientRect();
     startX = e.clientX - r.left;
     startY = e.clientY - r.top;
-    selectRect.node().setAttribute('x', startX);
-    selectRect.node().setAttribute('y', startY);
-    selectRect.node().setAttribute('width', 0);
-    selectRect.node().setAttribute('height', 0);
-    selectRect.node().style.display = null;
+    selectRect.setAttribute('x', startX);
+    selectRect.setAttribute('y', startY);
+    selectRect.setAttribute('width', 0);
+    selectRect.setAttribute('height', 0);
+    selectRect.style.display = null;
     e.preventDefault();
   };
 
@@ -1123,16 +1123,16 @@ function setRectMode(mode) {
     const r = svg.node().getBoundingClientRect();
     const mx = e.clientX - r.left;
     const my = e.clientY - r.top;
-    selectRect.node().setAttribute('x', Math.min(startX, mx));
-    selectRect.node().setAttribute('y', Math.min(startY, my));
-    selectRect.node().setAttribute('width', Math.abs(mx - startX));
-    selectRect.node().setAttribute('height', Math.abs(my - startY));
+    selectRect.setAttribute('x', Math.min(startX, mx));
+    selectRect.setAttribute('y', Math.min(startY, my));
+    selectRect.setAttribute('width', Math.abs(mx - startX));
+    selectRect.setAttribute('height', Math.abs(my - startY));
   };
 
   overlay.onmouseup = (e) => {
     if (!dragging) return;
     dragging = false;
-    selectRect.node().style.display = 'none';
+    selectRect.style.display = 'none';
     const r = svg.node().getBoundingClientRect();
     const mx = e.clientX - r.left;
     const my = e.clientY - r.top;
@@ -1169,7 +1169,7 @@ function setRectMode(mode) {
   overlay.onmouseleave = () => {
     if (dragging) {
       dragging = false;
-      selectRect.node().style.display = 'none';
+      selectRect.style.display = 'none';
     }
   };
 }
