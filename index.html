@@ -293,7 +293,7 @@ svg#map:active { cursor: grabbing; }
 <header>
   <div class="logo">🗾</div>
   <div>
-    <div class="title">ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);letter-spacing:.05em;">v1.2.0</span></div>
+    <div class="title">ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);letter-spacing:.05em;">v1.3.0</span></div>
     <div class="subtitle">市区町村 ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -344,6 +344,60 @@ svg#map:active { cursor: grabbing; }
           <input type="checkbox" id="mask-other" onchange="redraw()" style="accent-color:var(--accent);width:14px;height:14px;">
           ほかのけんを ぜんぶ かくす
         </label>
+      </div>
+    </div>
+
+    <!-- さかいせん -->
+    <div class="sec">
+      <div class="sec-h">市区町村 さかいせん</div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <div class="color-row">
+          <div class="color-preview" id="borderMuniPreview" onclick="document.getElementById('borderMuniPicker').click()" style="background:#b09080;border-radius:4px;"></div>
+          <input type="color" id="borderMuniPicker" value="#b09080" oninput="setBorderMuniColor(this.value)">
+          <span style="font-size:12px;color:var(--muted);">いろ</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:11px;color:var(--muted);white-space:nowrap;">ふとさ</span>
+          <input type="range" id="border-muni-width" min="0" max="6" step="0.5" value="0.4"
+            oninput="setBorderMuniWidth(this.value)" style="flex:1;accent-color:var(--accent);">
+          <span style="font-size:11px;color:var(--muted);min-width:24px;" id="border-muni-width-val">0.4</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:11px;color:var(--muted);white-space:nowrap;">しゅるい</span>
+          <select class="sel" id="border-muni-dash" onchange="setBorderMuniDash(this.value)" style="flex:1;font-size:12px;">
+            <option value="none">──── 実線</option>
+            <option value="4,3">- - - - はせん</option>
+            <option value="2,2">···· てんせん</option>
+            <option value="8,3,2,3">─·─· 一点鎖線</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- けんさかい -->
+    <div class="sec">
+      <div class="sec-h">都道府県 けんさかい</div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <div class="color-row">
+          <div class="color-preview" id="borderPrefPreview" onclick="document.getElementById('borderPrefPicker').click()" style="background:#503820;border-radius:4px;"></div>
+          <input type="color" id="borderPrefPicker" value="#503820" oninput="setBorderPrefColor(this.value)">
+          <span style="font-size:12px;color:var(--muted);">いろ</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:11px;color:var(--muted);white-space:nowrap;">ふとさ</span>
+          <input type="range" id="border-pref-width" min="0" max="8" step="0.5" value="1.5"
+            oninput="setBorderPrefWidth(this.value)" style="flex:1;accent-color:var(--accent);">
+          <span style="font-size:11px;color:var(--muted);min-width:24px;" id="border-pref-width-val">1.5</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:11px;color:var(--muted);white-space:nowrap;">しゅるい</span>
+          <select class="sel" id="border-pref-dash" onchange="setBorderPrefDash(this.value)" style="flex:1;font-size:12px;">
+            <option value="none">──── 実線</option>
+            <option value="4,3">- - - - はせん</option>
+            <option value="2,2">···· てんせん</option>
+            <option value="8,3,2,3">─·─· 一点鎖線</option>
+          </select>
+        </div>
       </div>
     </div>
 
@@ -444,6 +498,51 @@ let showLabel = false;
 let labelSize = 2.5;
 let seaColor = '#dce8f4';
 let landColor = '#e8e0d4';
+let borderMuniColor = '#b09080';
+let borderMuniWidth = 0.4;
+let borderMuniDash  = 'none';
+let borderPrefColor = '#503820';
+let borderPrefWidth = 1.5;
+let borderPrefDash  = 'none';
+
+function setBorderMuniColor(c) { borderMuniColor = c; document.getElementById('borderMuniPreview').style.background = c; redrawBorders(); }
+function setBorderMuniWidth(v) { borderMuniWidth = parseFloat(v); document.getElementById('border-muni-width-val').textContent = v; redrawBorders(); }
+function setBorderMuniDash(v)  { borderMuniDash  = v; redrawBorders(); }
+function setBorderPrefColor(c) { borderPrefColor = c; document.getElementById('borderPrefPreview').style.background = c; redrawBorders(); }
+function setBorderPrefWidth(v) { borderPrefWidth = parseFloat(v); document.getElementById('border-pref-width-val').textContent = v; redrawBorders(); }
+function setBorderPrefDash(v)  { borderPrefDash  = v; redrawBorders(); }
+
+function redrawBorders() {
+  if (!topoData || topoData.type !== 'Topology') return;
+  const k = currentTransform.k;
+  const objKey = Object.keys(topoData.objects)[0];
+  const obj = topoData.objects[objKey];
+
+  // 市区町村さかい（ぜんぶの さかい）
+  gBorderMuni.selectAll('path').remove();
+  gBorderMuni.append('path')
+    .datum(topojson.mesh(topoData, obj, (a, b) => a !== b))
+    .attr('d', path)
+    .attr('fill', 'none')
+    .attr('stroke', borderMuniColor)
+    .attr('stroke-width', borderMuniWidth / k)
+    .attr('stroke-dasharray', borderMuniDash === 'none' ? null : borderMuniDash)
+    .style('pointer-events', 'none');
+
+  // けんさかい（となりが ちがうけん の さかいだけ）
+  gBorderPref.selectAll('path').remove();
+  gBorderPref.append('path')
+    .datum(topojson.mesh(topoData, obj, (a, b) => {
+      if (a === b) return false;
+      return (a.properties?.N03_001 || '') !== (b.properties?.N03_001 || '');
+    }))
+    .attr('d', path)
+    .attr('fill', 'none')
+    .attr('stroke', borderPrefColor)
+    .attr('stroke-width', borderPrefWidth / k)
+    .attr('stroke-dasharray', borderPrefDash === 'none' ? null : borderPrefDash)
+    .style('pointer-events', 'none');
+}
 
 function setSeaColor(c) {
   seaColor = c;
@@ -525,7 +624,7 @@ function clearAll() {
 // =====================================================
 const svg = d3.select('#map');
 let W = 0, H = 0, path, proj;
-let gMuni, gLabels;
+let gMuni, gBorderMuni, gBorderPref, gLabels;
 let zoomBehavior;
 let currentTransform = d3.zoomIdentity;
 
@@ -536,6 +635,8 @@ function initSvg() {
   svg.attr('width', W).attr('height', H);
 
   gMuni = svg.append('g').attr('class', 'g-muni');
+  gBorderMuni = svg.append('g').attr('class', 'g-border-muni');
+  gBorderPref = svg.append('g').attr('class', 'g-border-pref');
   gLabels = svg.append('g').attr('class', 'g-labels').style('display','none');
 
   zoomBehavior = d3.zoom()
@@ -543,12 +644,13 @@ function initSvg() {
     .on('zoom', ev => {
       currentTransform = ev.transform;
       gMuni.attr('transform', ev.transform);
+      gBorderMuni.attr('transform', ev.transform);
+      gBorderPref.attr('transform', ev.transform);
       gLabels.attr('transform', ev.transform);
-      const scale = ev.transform.k;
       gLabels.style('display', showLabel ? null : 'none');
-      // ズームに応じてボーダーの太さ調整
-      gMuni.selectAll('path')
-        .attr('stroke-width', Math.max(0.2, 0.5 / scale));
+      const k = ev.transform.k;
+      gBorderMuni.selectAll('path').attr('stroke-width', borderMuniWidth / k);
+      gBorderPref.selectAll('path').attr('stroke-width', borderPrefWidth / k);
     });
   svg.call(zoomBehavior);
 }
@@ -574,12 +676,7 @@ function redraw() {
       if (color) return color;
       return landColor;
     })
-    .attr('stroke', d => {
-      const maskOther2 = document.getElementById('mask-other')?.checked && currentPrefFilter;
-      if (maskOther2 && getPref(d) !== currentPrefFilter) return 'none';
-      if (currentPrefFilter && getPref(d) !== currentPrefFilter) return 'rgba(0,0,0,0.05)';
-      return 'rgba(100,80,60,0.25)';
-    });
+    .attr('stroke', 'none');
 }
 
 function buildMap() {
@@ -590,20 +687,15 @@ function buildMap() {
     .enter().append('path')
     .attr('d', path)
     .attr('fill', d => paintMap.get(getCode(d)) || landColor)
-    .attr('stroke', 'rgba(100,80,60,0.25)')
-    .attr('stroke-width', 0.5)
-    .style('vector-effect', 'non-scaling-stroke')
+    .attr('stroke', 'none')
     .style('cursor', 'pointer')
     .on('mouseover', function(ev, d) {
-      d3.select(this).attr('stroke', '#c05020').attr('stroke-width', 1.5);
+      d3.select(this).attr('stroke', '#c05020').attr('stroke-width', 2 / currentTransform.k);
       showTip(ev, d);
     })
     .on('mousemove', ev => moveTip(ev))
-    .on('mouseout', function(ev, d) {
-      const scale = currentTransform.k;
-      d3.select(this)
-        .attr('stroke', currentPrefFilter && getPref(d) !== currentPrefFilter ? 'rgba(0,0,0,0.05)' : 'rgba(100,80,60,0.25)')
-        .attr('stroke-width', Math.max(0.2, 0.5 / scale));
+    .on('mouseout', function() {
+      d3.select(this).attr('stroke', 'none');
       hideTip();
     })
     .on('click', function(ev, d) {
@@ -637,6 +729,7 @@ function buildMap() {
     .text(d => getName(d));
 
   buildPrefFilter();
+  redrawBorders();
 }
 
 // =====================================================
