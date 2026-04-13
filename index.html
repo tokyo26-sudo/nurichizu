@@ -297,7 +297,7 @@ svg#map:active { cursor: grabbing; }
 <header>
   <div class="logo">🗾</div>
   <div>
-    <div class="title">ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);letter-spacing:.05em;">v1.4.6</span></div>
+    <div class="title">ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);letter-spacing:.05em;">v1.4.8</span></div>
     <div class="subtitle">市区町村 ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -317,6 +317,16 @@ svg#map:active { cursor: grabbing; }
       </div>
       <div class="palette" id="palette"></div>
       <div class="color-hint">地図をクリックすると この色でぬれるヨ</div>
+    </div>
+
+    <!-- まとめて塗るモード -->
+    <div class="sec">
+      <div class="sec-h">まとめて塗るモード</div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn" id="btn-rect-paint" onclick="setRectMode('paint')" style="flex:1;">🖌️ ぬる</button>
+        <button class="btn" id="btn-rect-erase" onclick="setRectMode('erase')" style="flex:1;">🗑️ けす</button>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5;" id="rect-hint">ボタンを押して、地図上をドラッグするとまとめて塗れるヨ</div>
     </div>
 
     <!-- ラベル -->
@@ -437,16 +447,6 @@ svg#map:active { cursor: grabbing; }
       <input type="file" id="loadIn" accept=".json" style="display:none" onchange="loadData(event)">
       <button class="btn" onclick="clearAll()">🗑 全部クリア</button>
       <button class="btn" onclick="resetDefaults()">↩ デフォルトの いろ設定に もどす</button>
-    </div>
-
-    <!-- まとめて塗るモード -->
-    <div class="sec">
-      <div class="sec-h">まとめて塗るモード</div>
-      <div style="display:flex;gap:6px;">
-        <button class="btn" id="btn-rect-paint" onclick="setRectMode('paint')" style="flex:1;">🖌️ ぬる</button>
-        <button class="btn" id="btn-rect-erase" onclick="setRectMode('erase')" style="flex:1;">🗑️ けす</button>
-      </div>
-      <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5;" id="rect-hint">ボタンを押して、地図上をドラッグするとまとめて塗れるヨ</div>
     </div>
 
     <!-- キャプチャ -->
@@ -738,6 +738,7 @@ function initSvg() {
 
   zoomBehavior = d3.zoom()
     .scaleExtent([0.5, 500])
+    .filter(ev => ev.type !== 'dblclick')
     .on('zoom', ev => {
       currentTransform = ev.transform;
       gMuni.attr('transform', ev.transform);
