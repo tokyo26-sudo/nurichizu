@@ -196,13 +196,60 @@ input[type=color] {
   position: relative;
   overflow: hidden;
   background: #dce8f4;
+  touch-action: none;
 }
 svg#map {
   width: 100%;
   display: block;
   cursor: grab;
+  touch-action: none;
 }
 svg#map:active { cursor: grabbing; }
+
+/* ハンバーガーボタン */
+.hamburger {
+  display: none;
+  flex-direction: column;
+  gap: 5px;
+  cursor: pointer;
+  padding: 4px;
+  background: none;
+  border: none;
+}
+.hamburger span {
+  display: block;
+  width: 22px;
+  height: 2px;
+  background: var(--text);
+  border-radius: 2px;
+  transition: all .2s;
+}
+
+/* ドロワー オーバーレイ */
+#drawer-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  z-index: 90;
+}
+#drawer-overlay.open { display: block; }
+
+@media (max-width: 700px) {
+  .hamburger { display: flex; }
+  aside {
+    position: fixed;
+    top: 0;
+    left: -260px;
+    width: 260px;
+    height: 100%;
+    z-index: 100;
+    transition: left .25s cubic-bezier(.4,0,.2,1);
+    box-shadow: 2px 0 16px rgba(0,0,0,.15);
+  }
+  aside.open { left: 0; }
+  .subtitle { display: none; }
+}
 
 /* ツールチップ */
 .tooltip {
@@ -295,15 +342,20 @@ svg#map:active { cursor: grabbing; }
 <body>
 
 <header>
+  <button class="hamburger" id="hamburger" onclick="toggleDrawer()" aria-label="メニュー">
+    <span></span><span></span><span></span>
+  </button>
   <div class="logo">🗾</div>
   <div>
-    <div class="title">ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);letter-spacing:.05em;">v1.4.8</span></div>
+    <div class="title">ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);letter-spacing:.05em;">v1.5.0</span></div>
     <div class="subtitle">市区町村 ぬりわけマップ</div>
   </div>
   <div class="hd-right">
     <div class="stat-badge">ぬった：<strong id="s-painted">0</strong> 市区町村</div>
   </div>
 </header>
+
+<div id="drawer-overlay" onclick="closeDrawer()"></div>
 
 <div class="body">
   <aside>
@@ -1071,6 +1123,26 @@ async function init() {
 }
 
 // =====================================================
+// ドロワー（スマホ）
+// =====================================================
+function toggleDrawer() {
+  const aside = document.querySelector('aside');
+  const overlay = document.getElementById('drawer-overlay');
+  const isOpen = aside.classList.contains('open');
+  if (isOpen) {
+    aside.classList.remove('open');
+    overlay.classList.remove('open');
+  } else {
+    aside.classList.add('open');
+    overlay.classList.add('open');
+  }
+}
+function closeDrawer() {
+  document.querySelector('aside').classList.remove('open');
+  document.getElementById('drawer-overlay').classList.remove('open');
+}
+
+// =====================================================
 // くけい せんたく
 // =====================================================
 let rectMode = null; // 'paint' | 'erase' | null
@@ -1087,6 +1159,8 @@ function setRectMode(mode) {
     svg.call(zoomBehavior);
     if (window._rectMouseMove) window.removeEventListener('mousemove', window._rectMouseMove);
     if (window._rectMouseUp)   window.removeEventListener('mouseup',   window._rectMouseUp);
+    if (window._rectTouchMove) window.removeEventListener('touchmove', window._rectTouchMove);
+    if (window._rectTouchEnd)  window.removeEventListener('touchend',  window._rectTouchEnd);
     document.getElementById('rect-hint').textContent = 'ボタンを押して、地図上をドラッグするとまとめて塗れるヨ';
     return;
   }
@@ -1176,6 +1250,74 @@ function setRectMode(mode) {
   overlay.onmousemove = null;
   overlay.onmouseup = null;
   overlay.onmouseleave = null;
+
+  // タッチ たいおう
+  overlay.ontouchstart = (e) => {
+    if (e.touches.length !== 1) return;
+    dragging = true;
+    const r = svg.node().getBoundingClientRect();
+    startX = e.touches[0].clientX - r.left;
+    startY = e.touches[0].clientY - r.top;
+    selectRect.setAttribute('x', startX);
+    selectRect.setAttribute('y', startY);
+    selectRect.setAttribute('width', 0);
+    selectRect.setAttribute('height', 0);
+    selectRect.style.display = null;
+    e.preventDefault();
+  };
+
+  window._rectTouchMove = (e) => {
+    if (!dragging || e.touches.length !== 1) return;
+    const r = svg.node().getBoundingClientRect();
+    const mx = e.touches[0].clientX - r.left;
+    const my = e.touches[0].clientY - r.top;
+    selectRect.setAttribute('x', Math.min(startX, mx));
+    selectRect.setAttribute('y', Math.min(startY, my));
+    selectRect.setAttribute('width', Math.abs(mx - startX));
+    selectRect.setAttribute('height', Math.abs(my - startY));
+    e.preventDefault();
+  };
+
+  window._rectTouchEnd = (e) => {
+    if (!dragging) return;
+    dragging = false;
+    selectRect.style.display = 'none';
+    const r = svg.node().getBoundingClientRect();
+    const touch = e.changedTouches[0];
+    const mx = touch.clientX - r.left;
+    const my = touch.clientY - r.top;
+    const rx0 = Math.min(startX, mx), ry0 = Math.min(startY, my);
+    const rx1 = Math.max(startX, mx), ry1 = Math.max(startY, my);
+    if (rx1 - rx0 < 4 && ry1 - ry0 < 4) return;
+
+    const t = currentTransform;
+    const lx0 = (rx0 - t.x) / t.k, ly0 = (ry0 - t.y) / t.k;
+    const lx1 = (rx1 - t.x) / t.k, ly1 = (ry1 - t.y) / t.k;
+
+    let changed = false;
+    gMuni.selectAll('path').each(function(d) {
+      try {
+        const [[bx0,by0],[bx1,by1]] = path.bounds(d);
+        const cx = (bx0+bx1)/2, cy = (by0+by1)/2;
+        if (cx >= lx0 && cx <= lx1 && cy >= ly0 && cy <= ly1) {
+          const code = getCode(d);
+          if (!code) return;
+          if (rectMode === 'paint') {
+            paintMap.set(code, currentColor);
+            d3.select(this).attr('fill', currentColor);
+          } else {
+            paintMap.delete(code);
+            d3.select(this).attr('fill', currentPrefFilter && getPref(d) !== currentPrefFilter ? 'rgba(0,0,0,0.04)' : landColor);
+          }
+          changed = true;
+        }
+      } catch(e) {}
+    });
+    if (changed) { updateSidebar(); updateStats(); }
+  };
+
+  window.addEventListener('touchmove', window._rectTouchMove, { passive: false });
+  window.addEventListener('touchend', window._rectTouchEnd);
 }
 
 // =====================================================
