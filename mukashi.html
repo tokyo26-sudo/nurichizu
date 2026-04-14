@@ -503,7 +503,7 @@ input[type=color] { opacity: 0; position: absolute; width: 0; height: 0; }
   </button>
   <div class="logo">🗺️</div>
   <div>
-    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.1.0</span></div>
+    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.1.1</span></div>
     <div class="subtitle">れきしてき ぎょうせいくいき ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -771,7 +771,6 @@ function initMap() {
   gOuter  = svgOverlay.append('g').attr('class', 'g-outer');
 
   lmap.on('zoom move zoomend moveend', updateSvgOverlay);
-  lmap.on('click', onMapClick);
 }
 
 // =====================================================
@@ -1251,10 +1250,17 @@ const ERA_DATES = {
   '2010': '20101001', '2015': '20150101', '2020': '20200101',
 };
 
+// タイムアウト つき fetch
+function fetchWithTimeout(url, ms = 8000) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  return fetch(url, { signal: controller.signal })
+    .finally(() => clearTimeout(timer));
+}
+
 async function loadEraData(year) {
   const dateStr = ERA_DATES[year] || (year + '0101');
   const base = 'https://geoshape.ex.nii.ac.jp/city/topojson';
-  // c=粗解像度、s=低解像度（s のほうが きれいだが おもい）
   const urls = [
     `${base}/${dateStr}/jp_city.c.topojson`,
     `${base}/${dateStr}/jp_city.s.topojson`,
@@ -1262,7 +1268,7 @@ async function loadEraData(year) {
   let loaded = false;
   for (const url of urls) {
     try {
-      const res = await fetch(url);
+      const res = await fetchWithTimeout(url, 8000);
       if (!res.ok) continue;
       const data = await res.json();
       processGeoData(data);
