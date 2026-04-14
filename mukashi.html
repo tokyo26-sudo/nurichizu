@@ -108,7 +108,7 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
   <button class="hamburger" id="hamburger" onclick="toggleDrawer()"><span></span><span></span><span></span></button>
   <div class="logo">🗺️</div>
   <div>
-    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.3.6</span></div>
+    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.3.8</span></div>
     <div class="subtitle">れきしてき ぎょうせいくいき ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -360,9 +360,10 @@ let paintMode = 'single'; // 'single' | 'gun' | 'pref' | 'kuni'
 function getUniqueId(f) {
   const p = f.properties || {};
   const pref = p.pref || p.N03_001 || '';
+  const kuni = p.kuni || '';
   const gun  = p.gun  || p.N03_003 || '';
   const city = p.city || p.N03_004 || '';
-  return `${pref}__${gun}__${city}`;
+  return `${pref}__${kuni}__${gun}__${city}`;
 }
 
 function setPaintMode(mode) {
@@ -392,11 +393,13 @@ function getTargetFeatures(d) {
   if (paintMode === 'gun') {
     const gun  = p.gun  || p.N03_003 || '';
     const pref = p.pref || p.N03_001 || '';
+    const kuni = p.kuni || '';
     if (!gun) return [d];
     return features.filter(f => {
       const fp = f.properties || {};
       return (fp.gun || fp.N03_003 || '') === gun &&
-             (fp.pref || fp.N03_001 || '') === pref;
+             (fp.pref || fp.N03_001 || '') === pref &&
+             (fp.kuni || '') === kuni;
     });
   }
   if (paintMode === 'pref') {
@@ -664,16 +667,16 @@ function buildLabels() {
   gLabels.selectAll('text').remove();
   // めんせき が ちいさい ポリゴン（りとう など）は ひょうじ しない
   const filtered = features.filter(f => {
+    if (!getName(f)) return false; // なまえ なし は のぞく
     const geom = f.geometry;
     if (!geom) return false;
     let coords = geom.type === 'Polygon' ? geom.coordinates[0] : (geom.coordinates[0] || [[]])[0];
     if (!coords || coords.length < 3) return false;
-    // バウンディングボックス で めんせき を かんいすいてい
     const lngs = coords.map(c => c[0]);
     const lats = coords.map(c => c[1]);
     const w = Math.max(...lngs) - Math.min(...lngs);
     const h = Math.max(...lats) - Math.min(...lats);
-    return w * h > 0.0001; // ちいさすぎる ポリゴン は のぞく
+    return w * h > 0.0001;
   });
   gLabels.selectAll('text').data(filtered).enter().append('text')
     .each(function(d) {
@@ -1036,7 +1039,7 @@ function updateTextPositions() {
 // =====================================================
 function getName(f) {
   const p = f.properties || {};
-  return p.city || p.N03_004 || p.N03_003 || p.N03_002 || p.N03_001 || p.name || '?';
+  return p.city || p.N03_004 || p.N03_003 || p.N03_002 || p.N03_001 || p.name || '';
 }
 function getPref(f) {
   const p = f.properties || {};
