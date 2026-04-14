@@ -108,7 +108,7 @@ input[type=color] { opacity: 0; position: fixed; top: -100px; left: -100px; widt
   <button class="hamburger" id="hamburger" onclick="toggleDrawer()"><span></span><span></span><span></span></button>
   <div class="logo">🗺️</div>
   <div>
-    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.3.1</span></div>
+    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.3.2</span></div>
     <div class="subtitle">れきしてき ぎょうせいくいき ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -913,10 +913,6 @@ function updateTextPositions() {
 // =====================================================
 // ヘルパー
 // =====================================================
-function getUniqueId(f) {
-  const p = f.properties || {};
-  return p.code || p.N03_007 || p.id || '';
-}
 function getName(f) {
   const p = f.properties || {};
   return p.city || p.N03_004 || p.N03_003 || p.N03_002 || p.N03_001 || p.name || '?';
