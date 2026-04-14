@@ -291,14 +291,11 @@ input[type=color] { opacity: 0; position: absolute; width: 0; height: 0; }
   pointer-events: none;
   z-index: 400;
 }
-#svg-overlay.paint-mode { pointer-events: all; cursor: pointer; }
-/* Leaflet SVG レイヤ の ポリゴン */
 .leaflet-overlay-pane svg {
   pointer-events: none;
 }
-.leaflet-overlay-pane svg.paint-mode {
+.leaflet-overlay-pane svg .g-poly path {
   pointer-events: all;
-  cursor: pointer;
 }
 
 /* テキストレイヤ */
@@ -511,7 +508,7 @@ input[type=color] { opacity: 0; position: absolute; width: 0; height: 0; }
   </button>
   <div class="logo">🗺️</div>
   <div>
-    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.1.3</span></div>
+    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.1.4</span></div>
     <div class="subtitle">れきしてき ぎょうせいくいき ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -828,8 +825,7 @@ function buildMap() {
     .style('cursor', 'pointer')
     .on('click', function(ev, d) {
       if (textMode) return;
-      ev.originalEvent && ev.originalEvent.stopPropagation();
-      ev.stopPropagation && ev.stopPropagation();
+      if (ev && ev.stopPropagation) ev.stopPropagation();
       const code = getCode(d);
       if (!code) return;
       if (!activeGroupId) {
@@ -1068,6 +1064,7 @@ function deleteGroup(id) {
   redrawOutlines();
   renderGroups();
   updateStats();
+  lmap.dragging.enable();
   toast('グループ けしたヨ！');
 }
 
@@ -1102,7 +1099,6 @@ function toggleTextMode() {
   btn.style.color = textMode ? 'var(--accent)' : '';
   btn.style.borderColor = textMode ? 'var(--accent)' : '';
   overlay.classList.toggle('text-mode', textMode);
-  document.getElementById('svg-overlay').classList.toggle('paint-mode', !textMode);
   if (!textMode) lmap.dragging.enable();
   else lmap.dragging.disable();
 }
