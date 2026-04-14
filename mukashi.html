@@ -108,7 +108,7 @@ input[type=color] { opacity: 0; position: fixed; top: -100px; left: -100px; widt
   <button class="hamburger" id="hamburger" onclick="toggleDrawer()"><span></span><span></span><span></span></button>
   <div class="logo">🗺️</div>
   <div>
-    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.2.9</span></div>
+    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.3.0</span></div>
     <div class="subtitle">れきしてき ぎょうせいくいき ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -129,6 +129,16 @@ input[type=color] { opacity: 0; position: fixed; top: -100px; left: -100px; widt
         <span style="font-size:12px;color:var(--muted);" id="colorHex">#e05030</span>
       </div>
       <div class="palette" id="palette"></div>
+    </div>
+
+    <!-- ぬり モード -->
+    <div class="sec">
+      <div class="sec-h">ぬり モード</div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn active" id="btn-mode-single" onclick="setPaintMode('single')" style="flex:1;">1つずつ</button>
+        <button class="btn" id="btn-mode-gun" onclick="setPaintMode('gun')" style="flex:1;">郡ごと</button>
+        <button class="btn" id="btn-mode-pref" onclick="setPaintMode('pref')" style="flex:1;">県ごと</button>
+      </div>
     </div>
 
     <!-- まとめて ぬる -->
@@ -326,7 +336,38 @@ function setCurrentColor(c) {
 // =====================================================
 // データ
 // =====================================================
-let features = [];
+let paintMode = 'single'; // 'single' | 'gun' | 'pref'
+
+function setPaintMode(mode) {
+  paintMode = mode;
+  document.getElementById('btn-mode-single').classList.toggle('active', mode === 'single');
+  document.getElementById('btn-mode-gun').classList.toggle('active', mode === 'gun');
+  document.getElementById('btn-mode-pref').classList.toggle('active', mode === 'pref');
+}
+
+function getTargetFeatures(d) {
+  const p = d.properties || {};
+  if (paintMode === 'gun') {
+    const gun = p.gun || p.N03_003 || '';
+    const pref = p.pref || p.N03_001 || '';
+    if (!gun) return [d];
+    return features.filter(f => {
+      const fp = f.properties || {};
+      return (fp.gun || fp.N03_003 || '') === gun && (fp.pref || fp.N03_001 || '') === pref;
+    });
+  }
+  if (paintMode === 'pref') {
+    const pref = p.pref || p.N03_001 || '';
+    if (!pref) return [d];
+    return features.filter(f => {
+      const fp = f.properties || {};
+      return (fp.pref || fp.N03_001 || '') === pref;
+    });
+  }
+  return [d];
+}
+
+
 let paintMap = new Map();
 let currentEra = '1920';
 let activePrefs = [];
@@ -423,16 +464,20 @@ function buildMap() {
     .on('click', function(ev, d) {
       if (textMode || rectMode) return;
       if (ev && ev.stopPropagation) ev.stopPropagation();
-      const code = getCode(d);
-      if (!code) return;
-      if (paintMap.has(code) && paintMap.get(code) === currentColor) {
-        paintMap.delete(code);
-        d3.select(this).attr('fill', 'rgba(220,210,200,0.6)');
-      } else {
-        paintMap.set(code, currentColor);
-        d3.select(this).attr('fill', currentColor);
-      }
-      
+      const targets = getTargetFeatures(d);
+      // 1かいめ か 2かいめ か はんてい（たいしょ の ぜんぶ が おなじ いろ なら けす）
+      const allSameColor = targets.every(f => paintMap.get(getCode(f)) === currentColor);
+      targets.forEach(f => {
+        const code = getCode(f);
+        if (!code) return;
+        if (allSameColor) {
+          paintMap.delete(code);
+        } else {
+          paintMap.set(code, currentColor);
+        }
+      });
+      // SVG の いろ を いっき に こうしん
+      gPoly.selectAll('path').attr('fill', f => paintMap.get(getCode(f)) || 'rgba(220,210,200,0.6)');
       updateSidebar();
       updateStats();
     });
@@ -751,7 +796,17 @@ function applyRect(rx0, ry0, rx1, ry1, mode) {
   let changed = false;
   gPoly.selectAll('path').each(function(d) {
     try {
-      const [lat, lng] = getCentroid(d);
+      const geom = d.geometry;
+      if (!geom) return;
+      // ざひょう を ちょくせつ とる
+      let coords;
+      if (geom.type === 'Polygon') coords = geom.coordinates[0];
+      else if (geom.type === 'MultiPolygon') coords = geom.coordinates[0][0];
+      else return;
+      if (!coords || !coords.length) return;
+      const lng = coords.reduce((s, c) => s + c[0], 0) / coords.length;
+      const lat = coords.reduce((s, c) => s + c[1], 0) / coords.length;
+      if (!isFinite(lat) || !isFinite(lng)) return;
       const pt = lmap.latLngToLayerPoint(L.latLng(lat, lng));
       if (pt.x >= rx0 && pt.x <= rx1 && pt.y >= ry0 && pt.y <= ry1) {
         const code = getCode(d);
