@@ -108,7 +108,7 @@ input[type=color] { opacity: 0; position: fixed; top: -100px; left: -100px; widt
   <button class="hamburger" id="hamburger" onclick="toggleDrawer()"><span></span><span></span><span></span></button>
   <div class="logo">🗺️</div>
   <div>
-    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.3.0</span></div>
+    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.3.1</span></div>
     <div class="subtitle">れきしてき ぎょうせいくいき ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -120,35 +120,19 @@ input[type=color] { opacity: 0; position: fixed; top: -100px; left: -100px; widt
 <div class="body">
   <aside id="aside">
 
-    <!-- いろえらび -->
+    <!-- とうかど -->
     <div class="sec">
-      <div class="sec-h">ぬる いろ</div>
-      <div class="color-row">
-        <div class="color-preview" id="colorPreview" onclick="document.getElementById('colorPicker').click()" style="background:#e05030"></div>
-        <input type="color" id="colorPicker" value="#e05030" oninput="setCurrentColor(this.value)">
-        <span style="font-size:12px;color:var(--muted);" id="colorHex">#e05030</span>
+      <div class="sec-h">ちず とうかど</div>
+      <div class="slider-row">
+        <span class="slider-label">ポリゴン</span>
+        <input type="range" min="0" max="100" step="1" value="75" style="flex:1;accent-color:var(--accent);" oninput="setPolyOpacity(this.value)">
+        <span class="slider-val" id="poly-opacity-val">75%</span>
       </div>
-      <div class="palette" id="palette"></div>
-    </div>
-
-    <!-- ぬり モード -->
-    <div class="sec">
-      <div class="sec-h">ぬり モード</div>
-      <div style="display:flex;gap:6px;">
-        <button class="btn active" id="btn-mode-single" onclick="setPaintMode('single')" style="flex:1;">1つずつ</button>
-        <button class="btn" id="btn-mode-gun" onclick="setPaintMode('gun')" style="flex:1;">郡ごと</button>
-        <button class="btn" id="btn-mode-pref" onclick="setPaintMode('pref')" style="flex:1;">県ごと</button>
+      <div class="slider-row" style="margin-top:6px;">
+        <span class="slider-label">OSM タイル</span>
+        <input type="range" min="0" max="100" step="1" value="20" style="flex:1;accent-color:var(--accent);" oninput="setTileOpacity(this.value)">
+        <span class="slider-val" id="tile-opacity-val">20%</span>
       </div>
-    </div>
-
-    <!-- まとめて ぬる -->
-    <div class="sec">
-      <div class="sec-h">まとめて ぬる</div>
-      <div style="display:flex;gap:6px;">
-        <button class="btn" id="btn-rect-paint" onclick="setRectMode('paint')" style="flex:1;">🖌️ ぬる</button>
-        <button class="btn" id="btn-rect-erase" onclick="setRectMode('erase')" style="flex:1;">🗑️ けす</button>
-      </div>
-      <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5;" id="rect-hint">ドラッグ で まとめて ぬれるヨ</div>
     </div>
 
     <!-- じだいえらび -->
@@ -171,6 +155,36 @@ input[type=color] { opacity: 0; position: fixed; top: -100px; left: -100px; widt
       <div class="pref-tags" id="pref-tags"></div>
     </div>
 
+    <!-- ぬり モード -->
+    <div class="sec">
+      <div class="sec-h">ぬり モード</div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn active" id="btn-mode-single" onclick="setPaintMode('single')" style="flex:1;">1つずつ</button>
+        <button class="btn" id="btn-mode-gun" onclick="setPaintMode('gun')" style="flex:1;">郡ごと</button>
+        <button class="btn" id="btn-mode-pref" onclick="setPaintMode('pref')" style="flex:1;">県ごと</button>
+      </div>
+    </div>
+
+    <!-- いろえらび -->
+    <div class="sec">
+      <div class="sec-h">ぬる いろ</div>
+      <div class="color-row">
+        <div class="color-preview" id="colorPreview" onclick="document.getElementById('colorPicker').click()" style="background:#e05030"></div>
+        <input type="color" id="colorPicker" value="#e05030" oninput="setCurrentColor(this.value)">
+        <span style="font-size:12px;color:var(--muted);" id="colorHex">#e05030</span>
+      </div>
+      <div class="palette" id="palette"></div>
+    </div>
+
+    <!-- まとめて ぬる -->
+    <div class="sec">
+      <div class="sec-h">まとめて ぬる</div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn" id="btn-rect-paint" onclick="setRectMode('paint')" style="flex:1;">🖌️ ぬる</button>
+        <button class="btn" id="btn-rect-erase" onclick="setRectMode('erase')" style="flex:1;">🗑️ けす</button>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5;" id="rect-hint">ドラッグ で まとめて ぬれるヨ</div>
+    </div>
 
     <!-- さかいせん -->
     <div class="sec">
@@ -218,21 +232,6 @@ input[type=color] { opacity: 0; position: fixed; top: -100px; left: -100px; widt
           <input type="color" id="labelColorPicker" value="#281e10" oninput="updateLabelColor(this.value)">
           <span style="font-size:12px;color:var(--muted);">もじ いろ</span>
         </div>
-      </div>
-    </div>
-
-    <!-- とうかど -->
-    <div class="sec">
-      <div class="sec-h">ちず とうかど</div>
-      <div class="slider-row">
-        <span class="slider-label">ポリゴン</span>
-        <input type="range" min="0" max="100" step="1" value="75" style="flex:1;accent-color:var(--accent);" oninput="setPolyOpacity(this.value)">
-        <span class="slider-val" id="poly-opacity-val">75%</span>
-      </div>
-      <div class="slider-row" style="margin-top:6px;">
-        <span class="slider-label">OSM タイル</span>
-        <input type="range" min="0" max="100" step="1" value="20" style="flex:1;accent-color:var(--accent);" oninput="setTileOpacity(this.value)">
-        <span class="slider-val" id="tile-opacity-val">20%</span>
       </div>
     </div>
 
@@ -338,6 +337,14 @@ function setCurrentColor(c) {
 // =====================================================
 let paintMode = 'single'; // 'single' | 'gun' | 'pref'
 
+function getUniqueId(f) {
+  const p = f.properties || {};
+  const pref = p.pref || p.N03_001 || '';
+  const gun  = p.gun  || p.N03_003 || '';
+  const city = p.city || p.N03_004 || '';
+  return `${pref}__${gun}__${city}`;
+}
+
 function setPaintMode(mode) {
   paintMode = mode;
   document.getElementById('btn-mode-single').classList.toggle('active', mode === 'single');
@@ -348,12 +355,14 @@ function setPaintMode(mode) {
 function getTargetFeatures(d) {
   const p = d.properties || {};
   if (paintMode === 'gun') {
-    const gun = p.gun || p.N03_003 || '';
+    const gun  = p.gun  || p.N03_003 || '';
     const pref = p.pref || p.N03_001 || '';
+    // gun なし → 1つだけ
     if (!gun) return [d];
     return features.filter(f => {
       const fp = f.properties || {};
-      return (fp.gun || fp.N03_003 || '') === gun && (fp.pref || fp.N03_001 || '') === pref;
+      return (fp.gun || fp.N03_003 || '') === gun &&
+             (fp.pref || fp.N03_001 || '') === pref;
     });
   }
   if (paintMode === 'pref') {
@@ -447,11 +456,11 @@ function buildMap() {
     .data(features)
     .enter().append('path')
     .attr('d', d => geoPathFn(d))
-    .attr('fill', d => paintMap.get(getCode(d)) || 'rgba(220,210,200,0.6)')
+    .attr('fill', d => paintMap.get(getUniqueId(d)) || 'rgba(220,210,200,0.6)')
     .attr('stroke', 'none')
     .style('cursor', 'pointer')
     .on('mouseover', function(ev, d) {
-      const code = getCode(d);
+      const code = getUniqueId(d);
       const p = d.properties || {};
       const gun = p.gun || p.N03_003 || '';
       const name = getName(d);
@@ -466,9 +475,9 @@ function buildMap() {
       if (ev && ev.stopPropagation) ev.stopPropagation();
       const targets = getTargetFeatures(d);
       // 1かいめ か 2かいめ か はんてい（たいしょ の ぜんぶ が おなじ いろ なら けす）
-      const allSameColor = targets.every(f => paintMap.get(getCode(f)) === currentColor);
+      const allSameColor = targets.every(f => paintMap.get(getUniqueId(f)) === currentColor);
       targets.forEach(f => {
-        const code = getCode(f);
+        const code = getUniqueId(f);
         if (!code) return;
         if (allSameColor) {
           paintMap.delete(code);
@@ -477,7 +486,7 @@ function buildMap() {
         }
       });
       // SVG の いろ を いっき に こうしん
-      gPoly.selectAll('path').attr('fill', f => paintMap.get(getCode(f)) || 'rgba(220,210,200,0.6)');
+      gPoly.selectAll('path').attr('fill', f => paintMap.get(getUniqueId(f)) || 'rgba(220,210,200,0.6)');
       updateSidebar();
       updateStats();
     });
@@ -783,10 +792,7 @@ function setRectMode(mode) {
     const mx = e.clientX - r.left, my = e.clientY - r.top;
     const rx0 = Math.min(startX, mx), ry0 = Math.min(startY, my);
     const rx1 = Math.max(startX, mx), ry1 = Math.max(startY, my);
-    if (rx1-rx0 >= 4 || ry1-ry0 >= 4) applyRect(rx0, ry0, rx1, ry1, mode);
-    window.removeEventListener('mousemove', onMove);
-    window.removeEventListener('mouseup', onUp);
-    setRectMode(null);
+    if (rx1-rx0 >= 4 || ry1-ry0 >= 4) applyRect(rx0, ry0, rx1, ry1, rectMode);
   };
   window.addEventListener('mousemove', onMove);
   window.addEventListener('mouseup', onUp);
@@ -809,7 +815,7 @@ function applyRect(rx0, ry0, rx1, ry1, mode) {
       if (!isFinite(lat) || !isFinite(lng)) return;
       const pt = lmap.latLngToLayerPoint(L.latLng(lat, lng));
       if (pt.x >= rx0 && pt.x <= rx1 && pt.y >= ry0 && pt.y <= ry1) {
-        const code = getCode(d);
+        const code = getUniqueId(d);
         if (!code) return;
         if (mode === 'paint') { paintMap.set(code, currentColor); d3.select(this).attr('fill', currentColor); }
         else { paintMap.delete(code); d3.select(this).attr('fill', 'rgba(220,210,200,0.6)'); }
@@ -907,7 +913,7 @@ function updateTextPositions() {
 // =====================================================
 // ヘルパー
 // =====================================================
-function getCode(f) {
+function getUniqueId(f) {
   const p = f.properties || {};
   return p.code || p.N03_007 || p.id || '';
 }
@@ -936,7 +942,7 @@ function updateSidebar() {
   // 都道府県 → 郡 → 市区町村 の ３だんかい
   const prefGroups = {};
   features.forEach(f => {
-    const code = getCode(f);
+    const code = getUniqueId(f);
     if (!paintMap.has(code)) return;
     const pref = getPref(f) || 'その他';
     const gun = getGun(f) || '（郡なし）';
@@ -959,7 +965,7 @@ function updateSidebar() {
         mi.innerHTML = `<div class="dot" style="background:${color}"></div><span class="mi-name">${name}</span><span class="mi-clear" data-code="${code}">✕</span>`;
         mi.querySelector('.mi-clear').onclick = e => {
           e.stopPropagation(); paintMap.delete(code);
-          gPoly.selectAll('path').filter(d => getCode(d) === code).attr('fill', 'rgba(220,210,200,0.6)');
+          gPoly.selectAll('path').filter(d => getUniqueId(d) === code).attr('fill', 'rgba(220,210,200,0.6)');
           updateSidebar(); updateStats();
         };
         prefEl.appendChild(mi);
@@ -996,7 +1002,7 @@ function loadData(ev) {
       }
       if (obj.paintMap) { paintMap.clear(); Object.entries(obj.paintMap).forEach(([k,v]) => paintMap.set(k,v)); }
       if (obj.texts) { textItems = []; document.getElementById('text-overlay').innerHTML = ''; obj.texts.forEach(t => { textItems.push(t); renderTextItem(t); }); }
-      gPoly.selectAll('path').attr('fill', d => paintMap.get(getCode(d)) || 'rgba(220,210,200,0.6)');
+      gPoly.selectAll('path').attr('fill', d => paintMap.get(getUniqueId(d)) || 'rgba(220,210,200,0.6)');
       updateSidebar(); updateStats();
       toast('ロードしたヨ！');
     } catch(err) { toast('よみこみ エラー…'); }
@@ -1035,7 +1041,7 @@ function captureSVG() {
   const colorGroups = new Map();
   paintMap.forEach((color, code) => { if (!colorGroups.has(color)) colorGroups.set(color, []); colorGroups.get(color).push(code); });
   colorGroups.forEach((codes, color) => {
-    const members = features.filter(f => codes.includes(getCode(f)));
+    const members = features.filter(f => codes.includes(getUniqueId(f)));
     svg += `<g data-color="${color}">`;
     members.forEach(f => { const d = geoPathFn(f); if (d) svg += `<path data-name="${getName(f)}" fill="${color}" d="${d}"/>`; });
     if (outlineWidth > 0) {
