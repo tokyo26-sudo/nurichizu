@@ -132,7 +132,7 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
   <button class="hamburger" id="hamburger" onclick="toggleDrawer()"><span></span><span></span><span></span></button>
   <div class="logo">🗺️</div>
   <div>
-    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.4.4</span></div>
+    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.4.5</span></div>
     <div class="subtitle">れきしてき ぎょうせいくいき ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -438,7 +438,12 @@ function renderAutoSlots() {
     ind.appendChild(dot);
   });
 
-  // ＋ボタン（5こ みまん のとき）
+  // けすステップ の インジケタ ドット（🗑）
+  const eraseDot = document.createElement('div');
+  eraseDot.className = 'auto-dot' + (autoColorIndex >= autoColorSlots.length ? ' current' : '');
+  eraseDot.style.cssText = 'font-size:8px;width:auto;height:auto;background:none;display:flex;align-items:center;';
+  eraseDot.textContent = '🗑';
+  ind.appendChild(eraseDot);
   if (autoColorSlots.length < 5) {
     const add = document.createElement('button');
     add.className = 'auto-add-btn';
@@ -467,8 +472,13 @@ function removeAutoSlot(i) {
 
 function advanceAutoColor() {
   if (!autoColorEnabled) return;
-  autoColorIndex = (autoColorIndex + 1) % autoColorSlots.length;
-  setCurrentColor(autoColorSlots[autoColorIndex]);
+  // さいご の つぎ は けすステップ（null）、そのつぎ は さいしょに もどる
+  // autoColorIndex === autoColorSlots.length の とき が「けす」ステップ
+  autoColorIndex = (autoColorIndex + 1) % (autoColorSlots.length + 1);
+  if (autoColorIndex < autoColorSlots.length) {
+    setCurrentColor(autoColorSlots[autoColorIndex]);
+  }
+  // けすステップ の とき は currentColor は かえない（クリク ハンドラ で はんてい する）
   renderAutoSlots();
 }
 
@@ -857,6 +867,16 @@ function buildMap() {
       if (textMode || rectMode) return;
       if (ev && ev.stopPropagation) ev.stopPropagation();
       const targets = getTargetFeatures(d);
+      // じどう いろかえ の「けすステップ」かどうか
+      const isEraseStep = autoColorEnabled && autoColorIndex >= autoColorSlots.length;
+      if (isEraseStep) {
+        // けすステップ：ぜんぶ けす
+        targets.forEach(f => { const code = getUniqueId(f); if (code) paintMap.delete(code); });
+        gPoly.selectAll('path').attr('fill', f => paintMap.get(getUniqueId(f)) || landColor);
+        updateSidebar(); updateStats();
+        advanceAutoColor();
+        return;
+      }
       // 1かいめ か 2かいめ か はんてい（たいしょ の ぜんぶ が おなじ いろ なら けす）
       const allSameColor = targets.every(f => paintMap.get(getUniqueId(f)) === currentColor);
       targets.forEach(f => {
