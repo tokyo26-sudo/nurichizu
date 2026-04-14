@@ -74,6 +74,7 @@ input[type=color] { opacity: 0; position: absolute; width: 0; height: 0; }
 .map-text { position: absolute; pointer-events: all; cursor: move; user-select: none; white-space: nowrap; transform: translate(-50%,-50%); }
 .map-text:hover .text-del { opacity: 1; }
 .text-del { position: absolute; top: -8px; right: -8px; width: 16px; height: 16px; background: #c03030; color: white; border-radius: 50%; font-size: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0; transition: opacity .15s; pointer-events: all; }
+.tooltip { position: absolute; pointer-events: none; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; font-size: 12px; line-height: 1.6; opacity: 0; transition: opacity .12s; z-index: 460; box-shadow: 0 4px 12px rgba(0,0,0,.1); white-space: nowrap; }
 .zoom-ctrl { position: absolute; right: 12px; bottom: 24px; display: flex; flex-direction: column; gap: 4px; z-index: 450; }
 .zoom-btn { width: 32px; height: 32px; border-radius: 6px; background: var(--panel); border: 1px solid var(--border); color: var(--text); font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .12s; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
 .zoom-btn:hover { border-color: var(--accent2); color: var(--accent); }
@@ -107,7 +108,7 @@ input[type=color] { opacity: 0; position: absolute; width: 0; height: 0; }
   <button class="hamburger" id="hamburger" onclick="toggleDrawer()"><span></span><span></span><span></span></button>
   <div class="logo">🗺️</div>
   <div>
-    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.2.0</span></div>
+    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.2.1</span></div>
     <div class="subtitle">れきしてき ぎょうせいくいき ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -220,8 +221,8 @@ input[type=color] { opacity: 0; position: absolute; width: 0; height: 0; }
       <div style="display:flex;flex-direction:column;gap:8px;" id="label-size-row">
         <div class="slider-row">
           <span class="slider-label">おおきさ</span>
-          <input type="range" id="label-size" min="0.05" max="8" step="0.05" value="1.0" style="flex:1;accent-color:var(--accent);" oninput="updateLabelSize(this.value)">
-          <span class="slider-val" id="label-size-val">1.0</span>
+          <input type="range" id="label-size" min="1" max="20" step="0.5" value="8.0" style="flex:1;accent-color:var(--accent);" oninput="updateLabelSize(this.value)">
+          <span class="slider-val" id="label-size-val">8.0</span>
         </div>
         <div class="color-row">
           <div class="color-preview" id="labelColorPreview" onclick="document.getElementById('labelColorPicker').click()" style="background:rgba(40,32,20,0.65);"></div>
@@ -293,6 +294,7 @@ input[type=color] { opacity: 0; position: absolute; width: 0; height: 0; }
     <div id="loading"><div class="spinner"></div>データ よみこみちゅう…</div>
     <div id="leaflet-map"></div>
     <div id="text-overlay"></div>
+    <div id="tooltip" class="tooltip"></div>
     <div class="zoom-ctrl">
       <button class="zoom-btn" onclick="lmap.zoomIn()">＋</button>
       <button class="zoom-btn" onclick="lmap.setView([36.5,136.5],5)">⌂</button>
@@ -351,7 +353,7 @@ let currentEra = '1920';
 let activePrefs = [];
 let borderMuniColor = '#b09080', borderMuniWidth = 0.4, borderMuniDash = 'none';
 let outlineWidth = 2.5, outlineDash = 'none';
-let showLabel = false, labelSize = 1.0, labelColor = 'rgba(40,32,20,0.65)';
+let showLabel = false, labelSize = 8.0, labelColor = 'rgba(40,32,20,0.8)';
 
 function setBorderMuniColor(c) { borderMuniColor = c; document.getElementById('borderMuniPreview').style.background = c; redrawBorders(); }
 function setBorderMuniWidth(v) { borderMuniWidth = parseFloat(v); document.getElementById('border-muni-width-val').textContent = v; redrawBorders(); }
@@ -410,7 +412,7 @@ function getCentroid(f) {
 function updateSvgOverlay() {
   if (!features.length) return;
   gPoly.selectAll('path').each(function(d) { d3.select(this).attr('d', geoPathFn(d)); });
-  gBorder.selectAll('path').each(function(d) { d3.select(this).attr('d', geoPathFn(d)); });
+  redrawBorders();
   redrawOutlines();
   if (showLabel) updateLabelPositions();
   updateTextPositions();
@@ -429,6 +431,17 @@ function buildMap() {
     .attr('fill', d => paintMap.get(getCode(d)) || 'rgba(220,210,200,0.6)')
     .attr('stroke', 'none')
     .style('cursor', 'pointer')
+    .on('mouseover', function(ev, d) {
+      const code = getCode(d);
+      const p = d.properties || {};
+      const gun = p.gun || p.N03_003 || '';
+      const name = getName(d);
+      const pref = getPref(d);
+      const color = paintMap.get(code);
+      showTip(ev, `${pref}${gun ? ' ' + gun : ''} ${name}${color ? ' (' + color + ')' : ''}`);
+    })
+    .on('mousemove', ev => moveTip(ev))
+    .on('mouseout', () => hideTip())
     .on('click', function(ev, d) {
       if (textMode || rectMode) return;
       if (ev && ev.stopPropagation) ev.stopPropagation();
@@ -508,7 +521,20 @@ function updateLabelColor(val) {
 }
 function buildLabels() {
   gLabels.selectAll('text').remove();
-  gLabels.selectAll('text').data(features).enter().append('text')
+  // めんせき が ちいさい ポリゴン（りとう など）は ひょうじ しない
+  const filtered = features.filter(f => {
+    const geom = f.geometry;
+    if (!geom) return false;
+    let coords = geom.type === 'Polygon' ? geom.coordinates[0] : (geom.coordinates[0] || [[]])[0];
+    if (!coords || coords.length < 3) return false;
+    // バウンディングボックス で めんせき を かんいすいてい
+    const lngs = coords.map(c => c[0]);
+    const lats = coords.map(c => c[1]);
+    const w = Math.max(...lngs) - Math.min(...lngs);
+    const h = Math.max(...lats) - Math.min(...lats);
+    return w * h > 0.0001; // ちいさすぎる ポリゴン は のぞく
+  });
+  gLabels.selectAll('text').data(filtered).enter().append('text')
     .each(function(d) {
       const [lat, lng] = getCentroid(d);
       const pt = lmap.latLngToLayerPoint(L.latLng(lat, lng));
@@ -699,7 +725,7 @@ function setRectMode(mode) {
     const mx = e.clientX - r.left, my = e.clientY - r.top;
     const rx0 = Math.min(startX, mx), ry0 = Math.min(startY, my);
     const rx1 = Math.max(startX, mx), ry1 = Math.max(startY, my);
-    if (rx1-rx0 >= 4 || ry1-ry0 >= 4) applyRect(rx0, ry0, rx1, ry1);
+    if (rx1-rx0 >= 4 || ry1-ry0 >= 4) applyRect(rx0, ry0, rx1, ry1, mode);
     window.removeEventListener('mousemove', onMove);
     window.removeEventListener('mouseup', onUp);
     setRectMode(null);
@@ -708,7 +734,7 @@ function setRectMode(mode) {
   window.addEventListener('mouseup', onUp);
 }
 
-function applyRect(rx0, ry0, rx1, ry1) {
+function applyRect(rx0, ry0, rx1, ry1, mode) {
   let changed = false;
   gPoly.selectAll('path').each(function(d) {
     try {
@@ -717,7 +743,7 @@ function applyRect(rx0, ry0, rx1, ry1) {
       if (pt.x >= rx0 && pt.x <= rx1 && pt.y >= ry0 && pt.y <= ry1) {
         const code = getCode(d);
         if (!code) return;
-        if (rectMode === 'paint') { paintMap.set(code, currentColor); d3.select(this).attr('fill', currentColor); }
+        if (mode === 'paint') { paintMap.set(code, currentColor); d3.select(this).attr('fill', currentColor); }
         else { paintMap.delete(code); d3.select(this).attr('fill', 'rgba(220,210,200,0.6)'); }
         changed = true;
       }
@@ -821,9 +847,9 @@ function getName(f) {
   const p = f.properties || {};
   return p.city || p.N03_004 || p.N03_003 || p.N03_002 || p.N03_001 || p.name || '?';
 }
-function getPref(f) {
+function getGun(f) {
   const p = f.properties || {};
-  return p.pref || p.N03_001 || '';
+  return p.gun || p.N03_003 || '';
 }
 function updateStats() { document.getElementById('s-painted').textContent = paintMap.size; }
 
@@ -835,30 +861,39 @@ function updateSidebar() {
   const empty = document.getElementById('mlist-empty');
   if (!paintMap.size) { empty.style.display = ''; list.innerHTML = ''; return; }
   empty.style.display = 'none';
-  const groups = {};
+  // 都道府県 → 郡 → 市区町村 の ３だんかい
+  const prefGroups = {};
   features.forEach(f => {
     const code = getCode(f);
     if (!paintMap.has(code)) return;
     const pref = getPref(f) || 'その他';
-    if (!groups[pref]) groups[pref] = [];
-    groups[pref].push({ name: getName(f), code, color: paintMap.get(code) });
+    const gun = getGun(f) || '（郡なし）';
+    if (!prefGroups[pref]) prefGroups[pref] = {};
+    if (!prefGroups[pref][gun]) prefGroups[pref][gun] = [];
+    prefGroups[pref][gun].push({ name: getName(f), code, color: paintMap.get(code) });
   });
   list.innerHTML = '';
-  Object.entries(groups).forEach(([pref, items]) => {
-    const g = document.createElement('div');
-    g.innerHTML = `<div class="grp-h">${pref}</div>`;
-    items.sort((a,b) => a.name.localeCompare(b.name,'ja')).forEach(({ name, code, color }) => {
-      const mi = document.createElement('div');
-      mi.className = 'mi';
-      mi.innerHTML = `<div class="dot" style="background:${color}"></div><span class="mi-name">${name}</span><span class="mi-clear" data-code="${code}">✕</span>`;
-      mi.querySelector('.mi-clear').onclick = e => {
-        e.stopPropagation(); paintMap.delete(code);
-        gPoly.selectAll('path').filter(d => getCode(d) === code).attr('fill', 'rgba(220,210,200,0.6)');
-        redrawOutlines(); updateSidebar(); updateStats();
-      };
-      g.appendChild(mi);
+  Object.entries(prefGroups).forEach(([pref, gunGroups]) => {
+    const prefEl = document.createElement('div');
+    prefEl.innerHTML = `<div class="grp-h">${pref}</div>`;
+    Object.entries(gunGroups).sort((a,b) => a[0].localeCompare(b[0],'ja')).forEach(([gun, items]) => {
+      const gunEl = document.createElement('div');
+      gunEl.style.cssText = 'font-size:10px;color:var(--muted);padding:3px 14px 1px 20px;font-style:italic;';
+      gunEl.textContent = gun;
+      prefEl.appendChild(gunEl);
+      items.sort((a,b) => a.name.localeCompare(b.name,'ja')).forEach(({ name, code, color }) => {
+        const mi = document.createElement('div');
+        mi.className = 'mi'; mi.style.paddingLeft = '28px';
+        mi.innerHTML = `<div class="dot" style="background:${color}"></div><span class="mi-name">${name}</span><span class="mi-clear" data-code="${code}">✕</span>`;
+        mi.querySelector('.mi-clear').onclick = e => {
+          e.stopPropagation(); paintMap.delete(code);
+          gPoly.selectAll('path').filter(d => getCode(d) === code).attr('fill', 'rgba(220,210,200,0.6)');
+          redrawOutlines(); updateSidebar(); updateStats();
+        };
+        prefEl.appendChild(mi);
+      });
     });
-    list.appendChild(g);
+    list.appendChild(prefEl);
   });
 }
 
@@ -964,6 +999,25 @@ function fetchWithTimeout(url, ms=10000) {
   const t = setTimeout(() => c.abort(), ms);
   return fetch(url, { signal: c.signal }).finally(() => clearTimeout(t));
 }
+
+// =====================================================
+// ツールチップ
+// =====================================================
+function showTip(ev, text) {
+  const tip = document.getElementById('tooltip');
+  tip.textContent = text;
+  tip.style.opacity = '1';
+  moveTip(ev);
+}
+function moveTip(ev) {
+  const tip = document.getElementById('tooltip');
+  const wrap = document.getElementById('map-wrap');
+  const r = wrap.getBoundingClientRect();
+  let x = ev.clientX - r.left + 14, y = ev.clientY - r.top - 10;
+  if (x + 220 > wrap.clientWidth) x = ev.clientX - r.left - 220;
+  tip.style.left = x + 'px'; tip.style.top = y + 'px';
+}
+function hideTip() { document.getElementById('tooltip').style.opacity = '0'; }
 
 // =====================================================
 // トースト・ドロワー
