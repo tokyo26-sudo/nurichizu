@@ -108,7 +108,7 @@ input[type=color] { opacity: 0; position: fixed; top: -100px; left: -100px; widt
   <button class="hamburger" id="hamburger" onclick="toggleDrawer()"><span></span><span></span><span></span></button>
   <div class="logo">🗺️</div>
   <div>
-    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.2.2</span></div>
+    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.2.3</span></div>
     <div class="subtitle">れきしてき ぎょうせいくいき ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -467,12 +467,55 @@ function buildMap() {
 // =====================================================
 // さかいせん・そとわく
 // =====================================================
+function topoMeshPath() {
+  // ぜんけん の TopoJSON から mesh で さかいせん を とりだす
+  const paths = [];
+  prefTopoData.forEach(({ topo, objKey }) => {
+    try {
+      const mesh = topojson.mesh(topo, topo.objects[objKey], (a, b) => a !== b);
+      const d = geoPathFnGeo(mesh);
+      if (d) paths.push(d);
+    } catch(e) {}
+  });
+  return paths.join('');
+}
+
+function topoMergePath(codes) {
+  // していした codes の ポリゴン を merge して そとわく だけ とりだす
+  const paths = [];
+  prefTopoData.forEach(({ topo, objKey }) => {
+    try {
+      const merged = topojson.merge(topo, topo.objects[objKey].geometries.filter(g => {
+        const c = g.properties && (g.properties.code || g.properties.N03_007);
+        return codes.includes(c);
+      }));
+      const d = geoPathFnGeo(merged);
+      if (d) paths.push(d);
+    } catch(e) {}
+  });
+  return paths.join('');
+}
+
+// GeoJSON geometry を Leaflet ざひょう に へんかん する パス かんすう
+function geoPathFnGeo(geom) {
+  if (!geom) return '';
+  const feature = geom.type === 'Feature' ? geom : { type: 'Feature', geometry: geom };
+  return geoPathFn(feature);
+}
+
 function redrawBorders() {
   gBorder.selectAll('path').remove();
   if (borderMuniWidth <= 0 || !features.length) return;
-  const allPaths = features.map(f => geoPathFn(f)).filter(Boolean).join('');
+  // TopoJSON が あれば mesh を つかう（きれいな さかいせん）
+  let d = '';
+  if (prefTopoData.length > 0) {
+    d = topoMeshPath();
+  } else {
+    d = features.map(f => geoPathFn(f)).filter(Boolean).join('');
+  }
+  if (!d) return;
   gBorder.append('path')
-    .attr('d', allPaths).attr('fill', 'none')
+    .attr('d', d).attr('fill', 'none')
     .attr('stroke', borderMuniColor).attr('stroke-width', borderMuniWidth)
     .attr('stroke-dasharray', borderMuniDash === 'none' ? null : borderMuniDash)
     .style('pointer-events', 'none');
@@ -487,12 +530,17 @@ function redrawOutlines() {
     colorGroups.get(color).push(code);
   });
   colorGroups.forEach((codes, color) => {
-    const members = features.filter(f => codes.includes(getCode(f)));
-    if (!members.length) return;
-    const allPaths = members.map(f => geoPathFn(f)).filter(Boolean).join('');
-    if (!allPaths) return;
+    // TopoJSON が あれば merge を つかう（ほんとう の そとわく だけ）
+    let d = '';
+    if (prefTopoData.length > 0) {
+      d = topoMergePath(codes);
+    } else {
+      const members = features.filter(f => codes.includes(getCode(f)));
+      d = members.map(f => geoPathFn(f)).filter(Boolean).join('');
+    }
+    if (!d) return;
     gOuter.append('path')
-      .attr('d', allPaths).attr('fill', 'none')
+      .attr('d', d).attr('fill', 'none')
       .attr('stroke', color).attr('stroke-width', outlineWidth)
       .attr('stroke-dasharray', outlineDash === 'none' ? null : outlineDash)
       .attr('stroke-linejoin', 'round').attr('stroke-linecap', 'round')
@@ -587,8 +635,7 @@ function initPrefSel() {
 function getPrefUrl(pref, era) {
   const code = PREF_CODES[pref];
   if (!code) return null;
-  if (pref === '静岡県' && era === '1920') return `${BASE}/data/shizuoka_1920.geojson`;
-  return `${BASE}/data/${era}_${code}.geojson`;
+  return `${BASE}/data/${era}_${code}.topojson`;
 }
 
 async function addPref() {
@@ -617,17 +664,26 @@ async function loadPrefData(pref, era) {
   const res = await fetchWithTimeout(url, 12000);
   if (!res.ok) throw new Error(`${res.status}`);
   const data = await res.json();
-  const fc = data.type === 'Topology'
-    ? topojson.feature(data, data.objects[Object.keys(data.objects)[0]])
-    : data;
-  prefCache.set(key, fc.features || []);
+  if (data.type === 'Topology') {
+    const objKey = Object.keys(data.objects)[0];
+    const fc = topojson.feature(data, data.objects[objKey]);
+    prefCache.set(key, { features: fc.features || [], topo: data, objKey });
+  } else {
+    prefCache.set(key, { features: data.features || [], topo: null, objKey: null });
+  }
 }
+
+// topoData を けん ごと に もつ
+let prefTopoData = []; // { topo, objKey } の はいれつ
 
 function rebuildFeatures() {
   features = [];
+  prefTopoData = [];
   activePrefs.forEach(pref => {
-    const fs = prefCache.get(`${pref}_${currentEra}`) || [];
-    features = features.concat(fs);
+    const cached = prefCache.get(`${pref}_${currentEra}`);
+    if (!cached) return;
+    features = features.concat(cached.features);
+    if (cached.topo) prefTopoData.push({ topo: cached.topo, objKey: cached.objKey });
   });
   buildMap();
   updateSidebar();
