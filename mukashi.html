@@ -108,7 +108,7 @@ input[type=color] { opacity: 0; position: fixed; top: -100px; left: -100px; widt
   <button class="hamburger" id="hamburger" onclick="toggleDrawer()"><span></span><span></span><span></span></button>
   <div class="logo">🗺️</div>
   <div>
-    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.3.2</span></div>
+    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.3.3</span></div>
     <div class="subtitle">れきしてき ぎょうせいくいき ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -800,11 +800,15 @@ function setRectMode(mode) {
 
 function applyRect(rx0, ry0, rx1, ry1, mode) {
   let changed = false;
+  // rx0,ry0 は map-wrap きじゅん → leaflet の containerPoint に へんかん
+  const p0 = lmap.containerPointToLayerPoint([rx0, ry0]);
+  const p1 = lmap.containerPointToLayerPoint([rx1, ry1]);
+  const lx0 = Math.min(p0.x, p1.x), lx1 = Math.max(p0.x, p1.x);
+  const ly0 = Math.min(p0.y, p1.y), ly1 = Math.max(p0.y, p1.y);
   gPoly.selectAll('path').each(function(d) {
     try {
       const geom = d.geometry;
       if (!geom) return;
-      // ざひょう を ちょくせつ とる
       let coords;
       if (geom.type === 'Polygon') coords = geom.coordinates[0];
       else if (geom.type === 'MultiPolygon') coords = geom.coordinates[0][0];
@@ -814,7 +818,7 @@ function applyRect(rx0, ry0, rx1, ry1, mode) {
       const lat = coords.reduce((s, c) => s + c[1], 0) / coords.length;
       if (!isFinite(lat) || !isFinite(lng)) return;
       const pt = lmap.latLngToLayerPoint(L.latLng(lat, lng));
-      if (pt.x >= rx0 && pt.x <= rx1 && pt.y >= ry0 && pt.y <= ry1) {
+      if (pt.x >= lx0 && pt.x <= lx1 && pt.y >= ly0 && pt.y <= ly1) {
         const code = getUniqueId(d);
         if (!code) return;
         if (mode === 'paint') { paintMap.set(code, currentColor); d3.select(this).attr('fill', currentColor); }
