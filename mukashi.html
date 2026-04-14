@@ -108,7 +108,7 @@ input[type=color] { opacity: 0; position: fixed; top: -100px; left: -100px; widt
   <button class="hamburger" id="hamburger" onclick="toggleDrawer()"><span></span><span></span><span></span></button>
   <div class="logo">🗺️</div>
   <div>
-    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.3.3</span></div>
+    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.3.4</span></div>
     <div class="subtitle">れきしてき ぎょうせいくいき ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -139,7 +139,8 @@ input[type=color] { opacity: 0; position: fixed; top: -100px; left: -100px; widt
     <div class="sec">
       <div class="sec-h">じだい えらび</div>
       <select class="sel" id="era-sel" onchange="changeEra(this.value)">
-        <option value="1920">1920年（大正9年）昭和大合併まえ</option>
+        <option value="bakumatsu">幕末（江戸末期）国郡境</option>
+        <option value="1920" selected>1920年（大正9年）昭和大合併まえ</option>
         <option value="1950">1950年（昭和25年）※じゅんびちゅう</option>
         <option value="2000">2000年（平成12年）※じゅんびちゅう</option>
       </select>
@@ -460,13 +461,15 @@ function buildMap() {
     .attr('stroke', 'none')
     .style('cursor', 'pointer')
     .on('mouseover', function(ev, d) {
-      const code = getUniqueId(d);
+      const uid = getUniqueId(d);
       const p = d.properties || {};
       const gun = p.gun || p.N03_003 || '';
       const name = getName(d);
       const pref = getPref(d);
-      const color = paintMap.get(code);
-      showTip(ev, `${pref}${gun ? ' ' + gun : ''} ${name}${color ? ' (' + color + ')' : ''}`);
+      const kuni = p.kuni || '';
+      const color = paintMap.get(uid);
+      const kuniStr = kuni ? ` [${kuni}]` : '';
+      showTip(ev, `${pref}${kuniStr}${gun ? ' ' + gun : ''} ${name}${color ? ' (' + color + ')' : ''}`);
     })
     .on('mousemove', ev => moveTip(ev))
     .on('mouseout', () => hideTip())
@@ -642,6 +645,9 @@ function initPrefSel() {
 }
 
 function getPrefUrl(pref, era) {
+  if (era === 'bakumatsu') {
+    return `${BASE}/data/bakumatsu.topojson`;
+  }
   const code = PREF_CODES[pref];
   if (!code) return null;
   return `${BASE}/data/${era}_${code}.topojson`;
@@ -651,6 +657,21 @@ async function addPref() {
   const sel = document.getElementById('pref-add-sel');
   const pref = sel.value;
   if (!pref) { toast('けん を えらんでネ'); return; }
+  // 幕末モード は けん えらび ふよう
+  if (currentEra === 'bakumatsu') {
+    document.getElementById('loading').style.display = 'flex';
+    try {
+      await loadPrefData('_bakumatsu', 'bakumatsu');
+      if (!activePrefs.includes('_bakumatsu')) activePrefs.push('_bakumatsu');
+      rebuildFeatures();
+      renderPrefTags();
+      toast('幕末データ よみこみ したヨ！');
+    } catch(e) {
+      toast('よみこみ しっぱい…');
+      document.getElementById('loading').style.display = 'none';
+    }
+    return;
+  }
   if (activePrefs.includes(pref)) { toast(`${pref} は もう ひょうじ ちゅう デスヨ`); return; }
   document.getElementById('loading').style.display = 'flex';
   try {
@@ -671,7 +692,7 @@ async function loadPrefData(pref, era) {
   if (prefCache.has(key)) return;
   const url = getPrefUrl(pref, era);
   if (!url) throw new Error('URLなし');
-  const res = await fetchWithTimeout(url, 12000);
+  const res = await fetchWithTimeout(url, 20000);
   if (!res.ok) throw new Error(`${res.status}`);
   const data = await res.json();
   if (data.type === 'Topology') {
@@ -721,14 +742,27 @@ function renderPrefTags() {
 
 async function changeEra(year) {
   currentEra = year;
-  if (!activePrefs.length) return;
-  document.getElementById('loading').style.display = 'flex';
-  try {
-    for (const pref of activePrefs) await loadPrefData(pref, year).catch(() => {});
-    rebuildFeatures();
-    toast(`${year}年 に きりかえたヨ！`);
-  } catch(e) {}
-  document.getElementById('loading').style.display = 'none';
+  // じだい かえたら activePrefs と paintMap リセット
+  activePrefs = [];
+  paintMap.clear();
+  features = [];
+  prefTopoData = [];
+  prefCache.clear();
+  gPoly.selectAll('path').remove();
+  gBorder.selectAll('path').remove();
+  renderPrefTags();
+  updateSidebar();
+  updateStats();
+
+  // じだい ノト こうしん
+  const noteEl = document.getElementById('era-note');
+  if (year === 'bakumatsu') {
+    noteEl.textContent = 'データ：幕末明治地勢地図境界データ（人間文化研究機構）CC BY-NC';
+    toast('幕末モド！「ひょうじ に ついか」ボタン おして よみこんでネ');
+  } else {
+    noteEl.textContent = 'データ：国土数値情報（国交省）';
+    toast(`${year}年 に きりかえたヨ！けん を えらびなおして ネ`);
+  }
 }
 
 // =====================================================
