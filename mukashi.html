@@ -108,7 +108,7 @@ input[type=color] { opacity: 0; position: fixed; top: -100px; left: -100px; widt
   <button class="hamburger" id="hamburger" onclick="toggleDrawer()"><span></span><span></span><span></span></button>
   <div class="logo">🗺️</div>
   <div>
-    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.3.4</span></div>
+    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.3.5</span></div>
     <div class="subtitle">れきしてき ぎょうせいくいき ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -209,6 +209,23 @@ input[type=color] { opacity: 0; position: fixed; top: -100px; left: -100px; widt
             <option value="2,2">···· てんせん</option>
             <option value="8,3,2,3">─·─· 一点鎖線</option>
           </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- りく・うみ いろ -->
+    <div class="sec">
+      <div class="sec-h">ちず はいけい いろ</div>
+      <div style="display:flex;flex-direction:column;gap:7px;">
+        <div class="color-row">
+          <div class="color-preview" id="landColorPreview" onclick="document.getElementById('landColorPicker').click()" style="background:#dcd2c8;"></div>
+          <input type="color" id="landColorPicker" value="#dcd2c8" oninput="setLandColor(this.value)">
+          <span style="font-size:12px;color:var(--muted);">りく いろ</span>
+        </div>
+        <div class="color-row">
+          <div class="color-preview" id="seaColorPreview" onclick="document.getElementById('seaColorPicker').click()" style="background:#c8d8e8;"></div>
+          <input type="color" id="seaColorPicker" value="#c8d8e8" oninput="setSeaColor(this.value)">
+          <span style="font-size:12px;color:var(--muted);">うみ いろ</span>
         </div>
       </div>
     </div>
@@ -383,10 +400,28 @@ let currentEra = '1920';
 let activePrefs = [];
 let borderMuniColor = '#b09080', borderMuniWidth = 0.4, borderMuniDash = 'none';
 let showLabel = false, labelSize = 8.0, labelColor = 'rgba(40,32,20,0.8)';
+let landColor = '#dcd2c8', seaColor = '#c8d8e8';
 
 function setBorderMuniColor(c) { borderMuniColor = c; document.getElementById('borderMuniPreview').style.background = c; redrawBorders(); }
 function setBorderMuniWidth(v) { borderMuniWidth = parseFloat(v); document.getElementById('border-muni-width-val').textContent = v; redrawBorders(); }
 function setBorderMuniDash(v)  { borderMuniDash = v; redrawBorders(); }
+function setLandColor(c) {
+  landColor = c;
+  document.getElementById('landColorPreview').style.background = c;
+  // ぬってない ぽりごん の いろ こうしん
+  gPoly.selectAll('path').each(function(d) {
+    const uid = getUniqueId(d);
+    if (!paintMap.has(uid)) d3.select(this).attr('fill', landColor);
+  });
+}
+function setSeaColor(c) {
+  seaColor = c;
+  document.getElementById('seaColorPreview').style.background = c;
+  document.getElementById('leaflet-map').style.background = c;
+  if (tileLayer) tileLayer.getContainer && (tileLayer.getContainer().style.background = c);
+  // leaflet の ちず はいけい も かえる
+  document.querySelector('#leaflet-map').style.backgroundColor = c;
+}
 
 // =====================================================
 // Leaflet
@@ -457,7 +492,7 @@ function buildMap() {
     .data(features)
     .enter().append('path')
     .attr('d', d => geoPathFn(d))
-    .attr('fill', d => paintMap.get(getUniqueId(d)) || 'rgba(220,210,200,0.6)')
+    .attr('fill', d => paintMap.get(getUniqueId(d)) || landColor)
     .attr('stroke', 'none')
     .style('cursor', 'pointer')
     .on('mouseover', function(ev, d) {
@@ -489,7 +524,7 @@ function buildMap() {
         }
       });
       // SVG の いろ を いっき に こうしん
-      gPoly.selectAll('path').attr('fill', f => paintMap.get(getUniqueId(f)) || 'rgba(220,210,200,0.6)');
+      gPoly.selectAll('path').attr('fill', f => paintMap.get(getUniqueId(f)) || landColor);
       updateSidebar();
       updateStats();
     });
@@ -856,7 +891,7 @@ function applyRect(rx0, ry0, rx1, ry1, mode) {
         const code = getUniqueId(d);
         if (!code) return;
         if (mode === 'paint') { paintMap.set(code, currentColor); d3.select(this).attr('fill', currentColor); }
-        else { paintMap.delete(code); d3.select(this).attr('fill', 'rgba(220,210,200,0.6)'); }
+        else { paintMap.delete(code); d3.select(this).attr('fill', landColor); }
         changed = true;
       }
     } catch(e) {}
@@ -999,7 +1034,7 @@ function updateSidebar() {
         mi.innerHTML = `<div class="dot" style="background:${color}"></div><span class="mi-name">${name}</span><span class="mi-clear" data-code="${code}">✕</span>`;
         mi.querySelector('.mi-clear').onclick = e => {
           e.stopPropagation(); paintMap.delete(code);
-          gPoly.selectAll('path').filter(d => getUniqueId(d) === code).attr('fill', 'rgba(220,210,200,0.6)');
+          gPoly.selectAll('path').filter(d => getUniqueId(d) === code).attr('fill', landColor);
           updateSidebar(); updateStats();
         };
         prefEl.appendChild(mi);
@@ -1036,7 +1071,7 @@ function loadData(ev) {
       }
       if (obj.paintMap) { paintMap.clear(); Object.entries(obj.paintMap).forEach(([k,v]) => paintMap.set(k,v)); }
       if (obj.texts) { textItems = []; document.getElementById('text-overlay').innerHTML = ''; obj.texts.forEach(t => { textItems.push(t); renderTextItem(t); }); }
-      gPoly.selectAll('path').attr('fill', d => paintMap.get(getUniqueId(d)) || 'rgba(220,210,200,0.6)');
+      gPoly.selectAll('path').attr('fill', d => paintMap.get(getUniqueId(d)) || landColor);
       updateSidebar(); updateStats();
       toast('ロードしたヨ！');
     } catch(err) { toast('よみこみ エラー…'); }
@@ -1049,7 +1084,7 @@ function clearAll() {
   if (!confirm('ぜんぶ クリア しますか？')) return;
   paintMap.clear();
   textItems = []; document.getElementById('text-overlay').innerHTML = '';
-  gPoly.selectAll('path').attr('fill', 'rgba(220,210,200,0.6)');
+  gPoly.selectAll('path').attr('fill', landColor);
   updateSidebar(); updateStats();
   toast('クリアしたヨ！');
 }
