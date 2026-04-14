@@ -473,9 +473,11 @@ function topoMeshPath() {
   prefTopoData.forEach(({ topo, objKey }) => {
     try {
       const mesh = topojson.mesh(topo, topo.objects[objKey], (a, b) => a !== b);
+      console.log('mesh type:', mesh.type, 'coords length:', mesh.coordinates && mesh.coordinates.length);
       const d = geoPathFnGeo(mesh);
+      console.log('mesh path length:', d.length);
       if (d) paths.push(d);
-    } catch(e) {}
+    } catch(e) { console.error('mesh エラ:', e); }
   });
   return paths.join('');
 }
@@ -499,6 +501,22 @@ function topoMergePath(codes) {
 // GeoJSON geometry を Leaflet ざひょう に へんかん する パス かんすう
 function geoPathFnGeo(geom) {
   if (!geom) return '';
+  // MultiLineString（mesh の けっか）も ちゃんと えがく
+  if (geom.type === 'MultiLineString') {
+    let paths = '';
+    geom.coordinates.forEach(line => {
+      const pts = line.map(([lng, lat]) => projectPoint(lat, lng));
+      if (!pts.length) return;
+      paths += pts.map((p, j) => (j === 0 ? `M${p[0].toFixed(1)},${p[1].toFixed(1)}` : `L${p[0].toFixed(1)},${p[1].toFixed(1)}`)).join('');
+    });
+    return paths;
+  }
+  if (geom.type === 'LineString') {
+    const pts = geom.coordinates.map(([lng, lat]) => projectPoint(lat, lng));
+    if (!pts.length) return '';
+    return pts.map((p, j) => (j === 0 ? `M${p[0].toFixed(1)},${p[1].toFixed(1)}` : `L${p[0].toFixed(1)},${p[1].toFixed(1)}`)).join('');
+  }
+  // Polygon / MultiPolygon（merge の けっか）
   const feature = geom.type === 'Feature' ? geom : { type: 'Feature', geometry: geom };
   return geoPathFn(feature);
 }
@@ -607,7 +625,7 @@ function updateLabelPositions() {
 // =====================================================
 function setPolyOpacity(v) {
   document.getElementById('poly-opacity-val').textContent = v + '%';
-  [gPoly, gBorder, gOuter].forEach(g => g.style('opacity', v/100));
+  [gPoly, gOuter].forEach(g => g.style('opacity', v/100));
 }
 function setTileOpacity(v) {
   document.getElementById('tile-opacity-val').textContent = v + '%';
