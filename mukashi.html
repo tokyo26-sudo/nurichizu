@@ -108,7 +108,7 @@ input[type=color] { opacity: 0; position: fixed; top: -100px; left: -100px; widt
   <button class="hamburger" id="hamburger" onclick="toggleDrawer()"><span></span><span></span><span></span></button>
   <div class="logo">🗺️</div>
   <div>
-    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.2.8</span></div>
+    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.2.9</span></div>
     <div class="subtitle">れきしてき ぎょうせいくいき ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -161,27 +161,6 @@ input[type=color] { opacity: 0; position: fixed; top: -100px; left: -100px; widt
       <div class="pref-tags" id="pref-tags"></div>
     </div>
 
-    <!-- そとわく -->
-    <div class="sec">
-      <div class="sec-h">そとわく（いろ ごと）</div>
-      <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">おなじ いろ で ぬった はんい に そとわく</div>
-      <div style="display:flex;flex-direction:column;gap:7px;">
-        <div class="slider-row">
-          <span class="slider-label">ふとさ</span>
-          <input type="range" id="outline-width" min="0" max="8" step="0.5" value="2.5" style="flex:1;accent-color:var(--accent);" oninput="setOutlineWidth(this.value)">
-          <span class="slider-val" id="outline-width-val">2.5</span>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <span style="font-size:11px;color:var(--muted);min-width:60px;">しゅるい</span>
-          <select class="sel" id="outline-dash" onchange="setOutlineDash(this.value)" style="flex:1;font-size:11px;">
-            <option value="none">──── 実線</option>
-            <option value="4,3">- - - - はせん</option>
-            <option value="2,2">···· てんせん</option>
-            <option value="8,3,2,3">─·─· 一点鎖線</option>
-          </select>
-        </div>
-      </div>
-    </div>
 
     <!-- さかいせん -->
     <div class="sec">
@@ -352,19 +331,16 @@ let paintMap = new Map();
 let currentEra = '1920';
 let activePrefs = [];
 let borderMuniColor = '#b09080', borderMuniWidth = 0.4, borderMuniDash = 'none';
-let outlineWidth = 2.5, outlineDash = 'none';
 let showLabel = false, labelSize = 8.0, labelColor = 'rgba(40,32,20,0.8)';
 
 function setBorderMuniColor(c) { borderMuniColor = c; document.getElementById('borderMuniPreview').style.background = c; redrawBorders(); }
 function setBorderMuniWidth(v) { borderMuniWidth = parseFloat(v); document.getElementById('border-muni-width-val').textContent = v; redrawBorders(); }
 function setBorderMuniDash(v)  { borderMuniDash = v; redrawBorders(); }
-function setOutlineWidth(v)    { outlineWidth = parseFloat(v); document.getElementById('outline-width-val').textContent = v; redrawOutlines(); }
-function setOutlineDash(v)     { outlineDash = v; redrawOutlines(); }
 
 // =====================================================
 // Leaflet
 // =====================================================
-let lmap, tileLayer, svgOverlay, gPoly, gBorder, gOuter, gLabels;
+let lmap, tileLayer, svgOverlay, gPoly, gBorder, gLabels;
 
 function initMap() {
   lmap = L.map('leaflet-map', { center: [36.5, 136.5], zoom: 5, zoomControl: false });
@@ -375,7 +351,6 @@ function initMap() {
   const svgLayer = L.svg({ padding: 0 }).addTo(lmap);
   svgOverlay = d3.select(svgLayer._container);
   gPoly   = svgOverlay.append('g').attr('class', 'g-poly');
-  gOuter  = svgOverlay.append('g').attr('class', 'g-outer');
   gBorder = svgOverlay.append('g').attr('class', 'g-border');
   gLabels = svgOverlay.append('g').attr('class', 'g-labels').style('display', 'none');
   lmap.on('zoom move zoomend moveend', updateSvgOverlay);
@@ -416,7 +391,7 @@ function updateSvgOverlay() {
   if (!features.length) return;
   gPoly.selectAll('path').each(function(d) { d3.select(this).attr('d', geoPathFn(d)); });
   redrawBorders();
-  redrawOutlines();
+  
   if (showLabel) updateLabelPositions();
   updateTextPositions();
 }
@@ -457,12 +432,12 @@ function buildMap() {
         paintMap.set(code, currentColor);
         d3.select(this).attr('fill', currentColor);
       }
-      redrawOutlines();
+      
       updateSidebar();
       updateStats();
     });
   redrawBorders();
-  redrawOutlines();
+  
   if (showLabel) buildLabels();
   document.getElementById('loading').style.display = 'none';
 }
@@ -483,21 +458,7 @@ function topoMeshPath() {
   return paths.join('');
 }
 
-function topoMergePath(codes) {
-  // していした codes の ポリゴン を merge して そとわく だけ とりだす
-  const paths = [];
-  prefTopoData.forEach(({ topo, objKey }) => {
-    try {
-      const merged = topojson.merge(topo, topo.objects[objKey].geometries.filter(g => {
-        const c = g.properties && (g.properties.code || g.properties.N03_007);
-        return codes.includes(c);
-      }));
-      const d = geoPathFnGeo(merged);
-      if (d) paths.push(d);
-    } catch(e) {}
-  });
-  return paths.join('');
-}
+
 
 // GeoJSON geometry を Leaflet ざひょう に へんかん する パス かんすう
 function geoPathFnGeo(geom) {
@@ -541,27 +502,6 @@ function redrawBorders() {
     .style('pointer-events', 'none');
 }
 
-function redrawOutlines() {
-  gOuter.selectAll('path').remove();
-  if (outlineWidth <= 0 || !features.length) return;
-  const colorGroups = new Map();
-  paintMap.forEach((color, code) => {
-    if (!colorGroups.has(color)) colorGroups.set(color, []);
-    colorGroups.get(color).push(code);
-  });
-  colorGroups.forEach((codes, color) => {
-    // ぬった features の パス を そのまま つかう
-    const members = features.filter(f => codes.includes(getCode(f)));
-    const d = members.map(f => geoPathFn(f)).filter(Boolean).join('');
-    if (!d) return;
-    gOuter.append('path')
-      .attr('d', d).attr('fill', 'none')
-      .attr('stroke', color).attr('stroke-width', outlineWidth)
-      .attr('stroke-dasharray', outlineDash === 'none' ? null : outlineDash)
-      .attr('stroke-linejoin', 'round').attr('stroke-linecap', 'round')
-      .style('pointer-events', 'none');
-  });
-}
 
 // =====================================================
 // ラベル
@@ -622,7 +562,7 @@ function updateLabelPositions() {
 // =====================================================
 function setPolyOpacity(v) {
   document.getElementById('poly-opacity-val').textContent = v + '%';
-  [gPoly, gOuter].forEach(g => g.style('opacity', v/100));
+  gPoly.style('opacity', v/100);
 }
 function setTileOpacity(v) {
   document.getElementById('tile-opacity-val').textContent = v + '%';
@@ -822,7 +762,7 @@ function applyRect(rx0, ry0, rx1, ry1, mode) {
       }
     } catch(e) {}
   });
-  if (changed) { redrawOutlines(); updateSidebar(); updateStats(); }
+  if (changed) { updateSidebar(); updateStats(); }
 }
 
 // =====================================================
@@ -965,7 +905,7 @@ function updateSidebar() {
         mi.querySelector('.mi-clear').onclick = e => {
           e.stopPropagation(); paintMap.delete(code);
           gPoly.selectAll('path').filter(d => getCode(d) === code).attr('fill', 'rgba(220,210,200,0.6)');
-          redrawOutlines(); updateSidebar(); updateStats();
+          updateSidebar(); updateStats();
         };
         prefEl.appendChild(mi);
       });
@@ -1002,7 +942,7 @@ function loadData(ev) {
       if (obj.paintMap) { paintMap.clear(); Object.entries(obj.paintMap).forEach(([k,v]) => paintMap.set(k,v)); }
       if (obj.texts) { textItems = []; document.getElementById('text-overlay').innerHTML = ''; obj.texts.forEach(t => { textItems.push(t); renderTextItem(t); }); }
       gPoly.selectAll('path').attr('fill', d => paintMap.get(getCode(d)) || 'rgba(220,210,200,0.6)');
-      redrawOutlines(); updateSidebar(); updateStats();
+      updateSidebar(); updateStats();
       toast('ロードしたヨ！');
     } catch(err) { toast('よみこみ エラー…'); }
     ev.target.value = '';
@@ -1015,7 +955,6 @@ function clearAll() {
   paintMap.clear();
   textItems = []; document.getElementById('text-overlay').innerHTML = '';
   gPoly.selectAll('path').attr('fill', 'rgba(220,210,200,0.6)');
-  gOuter.selectAll('path').remove();
   updateSidebar(); updateStats();
   toast('クリアしたヨ！');
 }
