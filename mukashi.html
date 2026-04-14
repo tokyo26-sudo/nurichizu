@@ -101,6 +101,18 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
 .modal input[type=text]:focus { border-color: var(--accent2); }
 .modal-row { display: flex; gap: 8px; }
 .modal-row .btn { margin-top: 0; }
+/* カラ パレット ポップアップ */
+.cp-wrap { position: relative; display: inline-block; }
+.cp-popup { display: none; position: absolute; top: 34px; left: 0; z-index: 3000; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 10px; box-shadow: 0 4px 16px rgba(0,0,0,.15); width: 200px; }
+.cp-popup.open { display: block; }
+.cp-palette { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px; }
+.cp-swatch { width: 22px; height: 22px; border-radius: 4px; cursor: pointer; border: 1.5px solid transparent; transition: transform .1s, border-color .1s; flex-shrink: 0; }
+.cp-swatch:hover { transform: scale(1.15); }
+.cp-swatch.active { border-color: var(--text); }
+.cp-input-row { display: flex; gap: 6px; align-items: center; }
+.cp-input-row input[type=text] { flex: 1; padding: 4px 6px; border: 1px solid var(--border); border-radius: 5px; font-size: 11px; font-family: inherit; color: var(--text); background: var(--bg); outline: none; }
+.cp-input-row input[type=text]:focus { border-color: var(--accent2); }
+.cp-preview-small { width: 22px; height: 22px; border-radius: 4px; border: 1.5px solid var(--border); flex-shrink: 0; }
 </style>
 </head>
 <body>
@@ -108,7 +120,7 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
   <button class="hamburger" id="hamburger" onclick="toggleDrawer()"><span></span><span></span><span></span></button>
   <div class="logo">🗺️</div>
   <div>
-    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.3.8</span></div>
+    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.4.1</span></div>
     <div class="subtitle">れきしてき ぎょうせいくいき ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -197,9 +209,15 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
     <!-- さかいせん -->
     <div class="sec">
       <div class="sec-h">市区町村 さかいせん</div>
-      <div style="display:flex;flex-direction:column;gap:7px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--muted);">
+          <input type="checkbox" id="border-toggle" checked onchange="toggleBorder(this.checked)" style="accent-color:var(--accent);width:14px;height:14px;">
+          ひょうじ する
+        </label>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:7px;" id="border-detail">
         <div class="color-row">
-          <div class="color-preview" id="borderMuniPreview" style="background:#b09080;"><input type="color" id="borderMuniPicker" value="#b09080" oninput="setBorderMuniColor(this.value)"></div>
+          <div class="color-preview" id="borderMuniPreview" style="background:#b09080;cursor:pointer;" onclick="openColorPopup('borderMuniPreview', borderMuniColor, c => setBorderMuniColor(c))"></div>
           <span style="font-size:12px;color:var(--muted);">いろ</span>
         </div>
         <div class="slider-row">
@@ -224,11 +242,11 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
       <div class="sec-h">ちず はいけい いろ</div>
       <div style="display:flex;flex-direction:column;gap:7px;">
         <div class="color-row">
-          <div class="color-preview" id="landColorPreview" style="background:#dcd2c8;"><input type="color" id="landColorPicker" value="#dcd2c8" oninput="setLandColor(this.value)"></div>
+          <div class="color-preview" id="landColorPreview" style="background:#dcd2c8;cursor:pointer;" onclick="openColorPopup('landColorPreview', landColor, c => setLandColor(c))"></div>
           <span style="font-size:12px;color:var(--muted);">りく いろ</span>
         </div>
         <div class="color-row">
-          <div class="color-preview" id="seaColorPreview" style="background:#c8d8e8;"><input type="color" id="seaColorPicker" value="#c8d8e8" oninput="setSeaColor(this.value)"></div>
+          <div class="color-preview" id="seaColorPreview" style="background:#c8d8e8;cursor:pointer;" onclick="openColorPopup('seaColorPreview', seaColor, c => setSeaColor(c))"></div>
           <span style="font-size:12px;color:var(--muted);">うみ いろ</span>
         </div>
       </div>
@@ -250,7 +268,7 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
           <span class="slider-val" id="label-size-val">8.0</span>
         </div>
         <div class="color-row">
-          <div class="color-preview" id="labelColorPreview" style="background:rgba(40,32,20,0.65);"><input type="color" id="labelColorPicker" value="#281e10" oninput="updateLabelColor(this.value)"></div>
+          <div class="color-preview" id="labelColorPreview" style="background:#281e10;cursor:pointer;" onclick="openColorPopup('labelColorPreview', labelColor, c => updateLabelColor(c))"></div>
           <span style="font-size:12px;color:var(--muted);">もじ いろ</span>
         </div>
       </div>
@@ -268,7 +286,7 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
           <span class="slider-val" id="text-size-val">16px</span>
         </div>
         <div class="color-row">
-          <div class="color-preview" id="textColorPreview" style="background:#2a2520;"><input type="color" id="textColorPicker" value="#2a2520"></div>
+          <div class="color-preview" id="textColorPreview" style="background:#2a2520;cursor:pointer;" onclick="openColorPopup('textColorPreview', document.getElementById('textColorPicker').value, c => { document.getElementById('textColorPicker').value=c; textColorPreview.style.background=c; })"></div>
           <span style="font-size:11px;color:var(--muted);">もじ いろ</span>
         </div>
       </div>
@@ -329,9 +347,13 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
 // =====================================================
 const PRESET_COLORS = [
   '#e05030','#e08030','#d4b020','#60a840','#20a070',
-  '#2080c0','#6050c0','#c040a0','#c0c0c0','#606060',
+  '#2080c0','#6050c0','#c040a0','#c08060','#406040',
   '#f4a090','#f4c090','#f4e090','#a0d890','#80d0b8',
-  '#80b8e8','#b0a0e0','#e0a0d0','#ffffff','#1a1a1a',
+  '#80b8e8','#b0a0e0','#e0a0d0','#a0d0f0','#f0a0b8',
+  '#ff0000','#ff8000','#ffff00','#00cc00','#00cccc',
+  '#0000ff','#8800ff','#ff00ff','#ff6699','#00ffaa',
+  '#eeeeee','#bbbbbb','#888888','#555555','#222222',
+  '#ffffff','#1a1a1a',
 ];
 let currentColor = '#e05030';
 function initPalette() {
@@ -351,6 +373,75 @@ function setCurrentColor(c) {
   document.getElementById('colorPicker').value = c;
   document.querySelectorAll('.swatch').forEach(sw => sw.classList.toggle('active', sw.title === c));
 }
+
+// =====================================================
+// カラ パレット ポップアップ
+// =====================================================
+let cpCallback = null;
+
+function openColorPopup(anchorId, currentVal, callback) {
+  // すでに ひらいてたら とじる
+  const existing = document.getElementById('cp-popup-global');
+  if (existing) existing.remove();
+
+  cpCallback = callback;
+  const anchor = document.getElementById(anchorId);
+  const popup = document.createElement('div');
+  popup.id = 'cp-popup-global';
+  popup.className = 'cp-popup open';
+
+  // パレット
+  const pal = document.createElement('div');
+  pal.className = 'cp-palette';
+  PRESET_COLORS.forEach(c => {
+    const sw = document.createElement('div');
+    sw.className = 'cp-swatch' + (c === currentVal ? ' active' : '');
+    sw.style.background = c;
+    sw.onclick = () => {
+      cpCallback(c);
+      popup.remove();
+    };
+    pal.appendChild(sw);
+  });
+  popup.appendChild(pal);
+
+  // すうち にゅうりょく
+  const row = document.createElement('div');
+  row.className = 'cp-input-row';
+  const prev = document.createElement('div');
+  prev.className = 'cp-preview-small';
+  prev.style.background = currentVal;
+  const inp = document.createElement('input');
+  inp.type = 'text';
+  inp.value = currentVal;
+  inp.placeholder = '#rrggbb';
+  inp.oninput = () => {
+    const v = inp.value.trim();
+    if (/^#[0-9a-fA-F]{6}$/.test(v)) {
+      prev.style.background = v;
+      cpCallback(v);
+    }
+  };
+  inp.onkeydown = e => { if (e.key === 'Enter') popup.remove(); };
+  row.appendChild(prev);
+  row.appendChild(inp);
+  popup.appendChild(row);
+
+  // アンカ の したに いれる
+  anchor.style.position = 'relative';
+  anchor.appendChild(popup);
+
+  // そと クリク で とじる
+  setTimeout(() => {
+    document.addEventListener('click', function handler(e) {
+      if (!popup.contains(e.target) && e.target !== anchor) {
+        popup.remove();
+        document.removeEventListener('click', handler);
+      }
+    });
+  }, 0);
+}
+
 
 // =====================================================
 // データ
@@ -454,6 +545,10 @@ let landColor = '#dcd2c8', seaColor = '#c8d8e8';
 function setBorderMuniColor(c) { borderMuniColor = c; document.getElementById('borderMuniPreview').style.background = c; redrawBorders(); }
 function setBorderMuniWidth(v) { borderMuniWidth = parseFloat(v); document.getElementById('border-muni-width-val').textContent = v; redrawBorders(); }
 function setBorderMuniDash(v)  { borderMuniDash = v; redrawBorders(); }
+function toggleBorder(on) {
+  document.getElementById('border-detail').style.opacity = on ? '1' : '0.4';
+  gBorder.style('display', on ? null : 'none');
+}
 function setLandColor(c) {
   landColor = c;
   document.getElementById('landColorPreview').style.background = c;
