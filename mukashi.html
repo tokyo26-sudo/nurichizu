@@ -70,7 +70,7 @@ header {
 
 /* サイドパネル */
 aside {
-  width: 250px;
+  width: 270px;
   background: var(--panel);
   border-right: 1px solid var(--border);
   display: flex;
@@ -508,7 +508,7 @@ input[type=color] { opacity: 0; position: absolute; width: 0; height: 0; }
   </button>
   <div class="logo">🗺️</div>
   <div>
-    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.1.4</span></div>
+    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.1.5</span></div>
     <div class="subtitle">れきしてき ぎょうせいくいき ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -565,10 +565,10 @@ input[type=color] { opacity: 0; position: absolute; width: 0; height: 0; }
       </div>
       <div class="slider-row" style="margin-top:6px;">
         <span class="slider-label">OSM タイル</span>
-        <input type="range" min="0" max="100" step="1" value="100"
+        <input type="range" min="0" max="100" step="1" value="20"
           style="flex:1;accent-color:var(--accent);"
           oninput="setTileOpacity(this.value)">
-        <span class="slider-val" id="tile-opacity-val">100%</span>
+        <span class="slider-val" id="tile-opacity-val">20%</span>
       </div>
     </div>
 
@@ -747,6 +747,7 @@ function initMap() {
   tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     maxZoom: 18,
+    opacity: 0.2,
   }).addTo(lmap);
 
   // Leaflet の SVG レイヤ として かさねる
@@ -790,17 +791,13 @@ function geoPathFn(feature) {
 
 function updateSvgOverlay() {
   if (!features.length) return;
-  // ポリゴン更新
-  gPoly.selectAll('path').each(function(d) {
+  gPoly.selectAll('path:not(.grp-inner)').each(function(d) {
     d3.select(this).attr('d', geoPathFn(d));
   });
-  // さかいせん更新
   gBorder.selectAll('path').each(function(d) {
     d3.select(this).attr('d', geoPathFn(d));
   });
-  // そとわく更新
   redrawOutlines();
-  // テキスト位置更新
   updateTextPositions();
 }
 
@@ -828,18 +825,26 @@ function buildMap() {
       if (ev && ev.stopPropagation) ev.stopPropagation();
       const code = getCode(d);
       if (!code) return;
-      if (!activeGroupId) {
-        toast('グループ を えらんで クダサイ！');
-        return;
-      }
       const info = paintMap.get(code);
-      if (info && info.groupId === activeGroupId) {
-        paintMap.delete(code);
-        d3.select(this).attr('fill', 'rgba(220,210,200,0.6)');
+      // グループ あり の ばあい
+      if (activeGroupId) {
+        if (info && info.groupId === activeGroupId) {
+          paintMap.delete(code);
+          d3.select(this).attr('fill', 'rgba(220,210,200,0.6)');
+        } else {
+          const grp = groups.find(g => g.id === activeGroupId);
+          paintMap.set(code, { color: grp.color, groupId: activeGroupId, name: getName(d) });
+          d3.select(this).attr('fill', grp.color);
+        }
       } else {
-        const grp = groups.find(g => g.id === activeGroupId);
-        paintMap.set(code, { color: grp.color, groupId: activeGroupId, name: getName(d) });
-        d3.select(this).attr('fill', grp.color);
+        // グループ なし の ばあい（いまの ぬりちず と おなじ）
+        if (info && info.color === currentColor) {
+          paintMap.delete(code);
+          d3.select(this).attr('fill', 'rgba(220,210,200,0.6)');
+        } else {
+          paintMap.set(code, { color: currentColor, groupId: null, name: getName(d) });
+          d3.select(this).attr('fill', currentColor);
+        }
       }
       redrawOutlines();
       renderGroups();
@@ -881,7 +886,32 @@ function redrawInnerBorder() {
       .attr('stroke', 'rgba(100,80,60,0.4)')
       .attr('stroke-width', innerBorderWidth)
       .attr('stroke-dasharray', innerBorderDash === 'none' ? null : innerBorderDash)
-      .style('pointer-events', 'none');
+      .style('pointer-events', 'none')
+      .style('cursor', 'default');
+  });
+}
+
+// グループ うちわく（グループ ない の さかいせん と べつに かく）
+function redrawGroupInners() {
+  gPoly.selectAll('.grp-inner').remove();
+  groups.forEach(grp => {
+    if (grp.innerWidth <= 0) return;
+    const members = features.filter(f => {
+      const info = paintMap.get(getCode(f));
+      return info && info.groupId === grp.id;
+    });
+    members.forEach(f => {
+      const d = geoPathFn(f);
+      if (!d) return;
+      gPoly.append('path')
+        .attr('class', 'grp-inner')
+        .attr('d', d)
+        .attr('fill', 'none')
+        .attr('stroke', grp.color)
+        .attr('stroke-width', grp.innerWidth)
+        .attr('stroke-dasharray', grp.innerDash === 'none' ? null : grp.innerDash)
+        .style('pointer-events', 'none');
+    });
   });
 }
 
@@ -897,7 +927,6 @@ function redrawOutlines() {
       return info && info.groupId === grp.id;
     });
     if (!members.length) return;
-    // 外枠: 全メンバーの輪郭パスを合成（単純マージ）
     const allPaths = members.map(f => geoPathFn(f)).filter(Boolean).join('');
     if (!allPaths) return;
     gOuter.append('path')
@@ -910,6 +939,7 @@ function redrawOutlines() {
       .attr('stroke-linecap', 'round')
       .style('pointer-events', 'none');
   });
+  redrawGroupInners();
 }
 
 // =====================================================
