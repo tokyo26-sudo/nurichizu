@@ -292,6 +292,14 @@ input[type=color] { opacity: 0; position: absolute; width: 0; height: 0; }
   z-index: 400;
 }
 #svg-overlay.paint-mode { pointer-events: all; cursor: pointer; }
+/* Leaflet SVG レイヤ の ポリゴン */
+.leaflet-overlay-pane svg {
+  pointer-events: none;
+}
+.leaflet-overlay-pane svg.paint-mode {
+  pointer-events: all;
+  cursor: pointer;
+}
 
 /* テキストレイヤ */
 #text-overlay {
@@ -503,7 +511,7 @@ input[type=color] { opacity: 0; position: absolute; width: 0; height: 0; }
   </button>
   <div class="logo">🗺️</div>
   <div>
-    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.1.1</span></div>
+    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.1.2</span></div>
     <div class="subtitle">れきしてき ぎょうせいくいき ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -764,13 +772,15 @@ function initMap() {
     maxZoom: 18,
   }).addTo(lmap);
 
-  // SVGオーバーレイ初期化
-  svgOverlay = d3.select('#svg-overlay');
+  // Leaflet の SVG レイヤ として かさねる
+  // これで ドラッグ・ズーム に じどう れんどう する
+  const svgLayer = L.svg({ padding: 0 }).addTo(lmap);
+  svgOverlay = d3.select(svgLayer._container);
   gPoly   = svgOverlay.append('g').attr('class', 'g-poly');
   gBorder = svgOverlay.append('g').attr('class', 'g-border');
   gOuter  = svgOverlay.append('g').attr('class', 'g-outer');
 
-  lmap.on('zoom move zoomend moveend', updateSvgOverlay);
+  lmap.on('zoomend moveend zoom move', updateSvgOverlay);
 }
 
 // =====================================================
@@ -803,10 +813,6 @@ function geoPathFn(feature) {
 
 function updateSvgOverlay() {
   if (!features.length) return;
-  const wrap = document.getElementById('map-wrap');
-  const W = wrap.clientWidth, H = wrap.clientHeight;
-  svgOverlay.attr('width', W).attr('height', H);
-
   // ポリゴン更新
   gPoly.selectAll('path').each(function(d) {
     d3.select(this).attr('d', geoPathFn(d));
@@ -1090,7 +1096,10 @@ function deleteGroup(id) {
 // =====================================================
 function setPolyOpacity(v) {
   document.getElementById('poly-opacity-val').textContent = v + '%';
-  svgOverlay.style('opacity', v / 100);
+  const op = v / 100;
+  gPoly.style('opacity', op);
+  gBorder.style('opacity', op);
+  gOuter.style('opacity', op);
 }
 function setTileOpacity(v) {
   document.getElementById('tile-opacity-val').textContent = v + '%';
@@ -1528,8 +1537,6 @@ async function init() {
 }
 
 window.addEventListener('resize', () => {
-  const wrap = document.getElementById('map-wrap');
-  svgOverlay.attr('width', wrap.clientWidth).attr('height', wrap.clientHeight);
   updateSvgOverlay();
 });
 
