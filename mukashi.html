@@ -11,504 +11,103 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
 :root {
-  --bg: #f7f4ef;
-  --panel: #ffffff;
-  --border: #e0d9d0;
-  --text: #2a2520;
-  --muted: #9a8f85;
-  --accent: #7040a0;
-  --accent2: #9060c0;
+  --bg: #f7f4ef; --panel: #ffffff; --border: #e0d9d0;
+  --text: #2a2520; --muted: #9a8f85; --accent: #7040a0; --accent2: #9060c0;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-/* ヘッダ */
-header {
-  background: var(--panel);
-  border-bottom: 1px solid var(--border);
-  padding: 10px 16px;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  flex-shrink: 0;
-  z-index: 1000;
-}
+body { background: var(--bg); color: var(--text); font-family: 'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+header { background: var(--panel); border-bottom: 1px solid var(--border); padding: 10px 16px; display: flex; align-items: center; gap: 14px; flex-shrink: 0; z-index: 1000; }
 .logo { font-size: 22px; }
 .title { font-size: 15px; font-weight: 700; letter-spacing: .04em; color: var(--accent); }
 .subtitle { font-size: 11px; color: var(--muted); margin-top: 1px; }
 .hd-right { margin-left: auto; display: flex; gap: 10px; align-items: center; }
-.hd-link {
-  font-size: 12px;
-  color: var(--muted);
-  text-decoration: none;
-  padding: 4px 10px;
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  transition: all .15s;
-}
+.hd-link { font-size: 12px; color: var(--muted); text-decoration: none; padding: 4px 10px; border: 1px solid var(--border); border-radius: 20px; transition: all .15s; }
 .hd-link:hover { border-color: var(--accent2); color: var(--accent); }
-.stat-badge {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 3px 12px;
-  font-size: 12px;
-  color: var(--muted);
-}
+.stat-badge { background: var(--bg); border: 1px solid var(--border); border-radius: 20px; padding: 3px 12px; font-size: 12px; color: var(--muted); }
 .stat-badge strong { color: var(--accent); font-size: 14px; font-weight: 700; }
-
-/* ボディ */
 .body { display: flex; flex: 1; overflow: hidden; }
-
-/* サイドパネル */
-aside {
-  width: 270px;
-  background: var(--panel);
-  border-right: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  flex-shrink: 0;
-  overflow-y: auto;
-  z-index: 500;
-}
+aside { width: 270px; background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; z-index: 500; }
 aside::-webkit-scrollbar { width: 3px; }
 aside::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-.sec {
-  padding: 12px 14px;
-  border-bottom: 1px solid var(--border);
-}
-.sec-h {
-  font-size: 10px;
-  letter-spacing: .12em;
-  color: var(--muted);
-  margin-bottom: 8px;
-  text-transform: uppercase;
-}
-
-/* カラーピッカー */
-.color-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.color-preview {
-  width: 28px;
-  height: 28px;
-  border-radius: 5px;
-  border: 1.5px solid var(--border);
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: transform .1s;
-}
+.sec { padding: 12px 14px; border-bottom: 1px solid var(--border); }
+.sec-h { font-size: 10px; letter-spacing: .12em; color: var(--muted); margin-bottom: 8px; text-transform: uppercase; }
+.color-row { display: flex; align-items: center; gap: 8px; }
+.color-preview { width: 28px; height: 28px; border-radius: 5px; border: 1.5px solid var(--border); cursor: pointer; flex-shrink: 0; transition: transform .1s; }
 .color-preview:hover { transform: scale(1.08); }
 input[type=color] { opacity: 0; position: absolute; width: 0; height: 0; }
-
-/* パレット */
-.palette {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-  margin-top: 8px;
-}
-.swatch {
-  width: 22px;
-  height: 22px;
-  border-radius: 4px;
-  cursor: pointer;
-  border: 1.5px solid transparent;
-  transition: transform .1s, border-color .1s;
-}
+.palette { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.swatch { width: 22px; height: 22px; border-radius: 4px; cursor: pointer; border: 1.5px solid transparent; transition: transform .1s, border-color .1s; }
 .swatch:hover { transform: scale(1.15); }
 .swatch.active { border-color: var(--text); }
-
-/* セレクト・スライダ共通 */
-.sel {
-  width: 100%;
-  padding: 5px 8px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  color: var(--text);
-  font-size: 12px;
-  outline: none;
-  cursor: pointer;
-}
+.sel { width: 100%; padding: 5px 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 12px; outline: none; cursor: pointer; }
 .sel:focus { border-color: var(--accent2); }
-.slider-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.slider-label {
-  font-size: 11px;
-  color: var(--muted);
-  white-space: nowrap;
-  min-width: 64px;
-}
-.slider-val {
-  font-size: 11px;
-  color: var(--muted);
-  min-width: 28px;
-  text-align: right;
-}
-
-/* ボタン */
-.btn {
-  width: 100%;
-  padding: 7px 10px;
-  border-radius: 6px;
-  font-size: 11px;
-  cursor: pointer;
-  font-family: inherit;
-  transition: all .15s;
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--muted);
-  margin-top: 4px;
-}
+.slider-row { display: flex; align-items: center; gap: 8px; }
+.slider-label { font-size: 11px; color: var(--muted); white-space: nowrap; min-width: 60px; }
+.slider-val { font-size: 11px; color: var(--muted); min-width: 32px; text-align: right; }
+.btn { width: 100%; padding: 7px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; font-family: inherit; transition: all .15s; border: 1px solid var(--border); background: transparent; color: var(--muted); margin-top: 4px; }
 .btn:hover { border-color: var(--accent2); color: var(--accent); }
-.btn.primary {
-  background: var(--accent);
-  color: white;
-  border-color: var(--accent);
-  font-weight: 700;
-}
+.btn.primary { background: var(--accent); color: white; border-color: var(--accent); font-weight: 700; }
 .btn.primary:hover { background: var(--accent2); border-color: var(--accent2); }
+.btn.active { background: var(--accent); color: white; border-color: var(--accent); }
 .btn.danger { color: #c03030; }
 .btn.danger:hover { border-color: #c03030; }
-
-/* グループカード */
-.grp-card {
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  margin-bottom: 6px;
-  overflow: hidden;
-}
-.grp-header {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 7px 10px;
-  cursor: pointer;
-  user-select: none;
-}
-.grp-header:hover { background: var(--bg); }
-.grp-swatch {
-  width: 13px;
-  height: 13px;
-  border-radius: 3px;
-  flex-shrink: 0;
-  border: 1px solid rgba(0,0,0,.12);
-}
-.grp-name {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--text);
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.grp-count { font-size: 10px; color: var(--muted); }
-.grp-chev { font-size: 9px; color: var(--muted); transition: transform .2s; }
-.grp-chev.open { transform: rotate(90deg); }
-.grp-body {
-  border-top: 1px solid var(--border);
-  padding: 10px 12px;
-  display: none;
-}
-.grp-body.open { display: block; }
-.grp-actions { display: flex; gap: 5px; margin-top: 8px; }
-.grp-btn {
-  flex: 1;
-  padding: 4px 6px;
-  border-radius: 5px;
-  font-size: 10px;
-  cursor: pointer;
-  font-family: inherit;
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--muted);
-  transition: all .12s;
-}
-.grp-btn:hover { border-color: var(--accent2); color: var(--accent); }
-.grp-btn.del { color: #c03030; }
-.grp-btn.del:hover { border-color: #c03030; }
-.grp-members {
-  font-size: 10px;
-  color: var(--muted);
-  line-height: 1.8;
-  border-top: 1px solid var(--border);
-  padding-top: 7px;
-  margin-top: 6px;
-  max-height: 80px;
-  overflow-y: auto;
-}
-.btn-add-grp {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  width: 100%;
-  padding: 7px 10px;
-  border-radius: 7px;
-  border: 1px dashed var(--border);
-  background: transparent;
-  font-size: 11px;
-  color: var(--muted);
-  cursor: pointer;
-  margin-top: 4px;
-  font-family: inherit;
-  transition: all .12s;
-}
-.btn-add-grp:hover { border-color: var(--accent2); color: var(--accent); background: rgba(112,64,160,.04); }
-
-/* マップ */
-#map-wrap {
-  flex: 1;
-  position: relative;
-  overflow: hidden;
-}
-#leaflet-map {
-  width: 100%;
-  height: 100%;
-  background: #c8d8e8;
-}
-#svg-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 400;
-}
-.leaflet-overlay-pane svg {
-  pointer-events: none;
-}
-.leaflet-overlay-pane svg .g-poly path {
-  pointer-events: all;
-}
-
-/* テキストレイヤ */
-#text-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 410;
-}
+.pref-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.pref-tag { font-size: 10px; padding: 2px 8px; border-radius: 12px; cursor: pointer; border: 1px solid var(--border); background: var(--bg); color: var(--muted); transition: all .12s; }
+.pref-tag.active { background: var(--accent); color: white; border-color: var(--accent); }
+.mlist-wrap { flex: 1; overflow-y: auto; }
+.mlist-wrap::-webkit-scrollbar { width: 3px; }
+.mlist-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.grp-h { font-size: 10px; color: var(--accent); font-weight: 700; padding: 6px 14px 2px; letter-spacing: .1em; border-left: 2px solid var(--accent); }
+.mi { display: flex; align-items: center; gap: 6px; padding: 3px 14px; font-size: 11px; cursor: pointer; transition: background .1s; }
+.mi:hover { background: rgba(0,0,0,.04); }
+.dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; border: 1px solid rgba(0,0,0,.1); }
+.mi-name { flex: 1; color: var(--text); }
+.mi-clear { font-size: 10px; color: var(--muted); cursor: pointer; padding: 1px 4px; border-radius: 3px; }
+.mi-clear:hover { background: rgba(0,0,0,.06); color: var(--accent); }
+.empty { text-align: center; padding: 24px 14px; color: var(--muted); font-size: 11px; line-height: 1.8; }
+#map-wrap { flex: 1; position: relative; overflow: hidden; }
+#leaflet-map { width: 100%; height: 100%; background: #c8d8e8; }
+.leaflet-overlay-pane svg { pointer-events: none; }
+.leaflet-overlay-pane svg .g-poly path { pointer-events: all; }
+#text-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 410; }
 #text-overlay.text-mode { pointer-events: all; cursor: crosshair; }
-.map-text {
-  position: absolute;
-  pointer-events: all;
-  cursor: move;
-  user-select: none;
-  white-space: nowrap;
-  transform: translate(-50%, -50%);
-}
+.map-text { position: absolute; pointer-events: all; cursor: move; user-select: none; white-space: nowrap; transform: translate(-50%,-50%); }
 .map-text:hover .text-del { opacity: 1; }
-.text-del {
-  position: absolute;
-  top: -8px;
-  right: -8px;
-  width: 16px;
-  height: 16px;
-  background: #c03030;
-  color: white;
-  border-radius: 50%;
-  font-size: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  opacity: 0;
-  transition: opacity .15s;
-  pointer-events: all;
-}
-
-/* 透過スライダ */
-#opacity-row {
-  position: absolute;
-  bottom: 16px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 20px;
-  padding: 6px 14px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  z-index: 450;
-  box-shadow: 0 2px 8px rgba(0,0,0,.1);
-  white-space: nowrap;
-}
-#opacity-row label { font-size: 11px; color: var(--muted); }
-#opacity-row input { width: 100px; accent-color: var(--accent); }
-#opacity-row span { font-size: 11px; color: var(--muted); min-width: 28px; }
-
-/* ズームコントロール */
-.zoom-ctrl {
-  position: absolute;
-  right: 12px;
-  bottom: 56px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  z-index: 450;
-}
-.zoom-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  color: var(--text);
-  font-size: 16px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all .12s;
-  box-shadow: 0 1px 4px rgba(0,0,0,.08);
-}
+.text-del { position: absolute; top: -8px; right: -8px; width: 16px; height: 16px; background: #c03030; color: white; border-radius: 50%; font-size: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0; transition: opacity .15s; pointer-events: all; }
+.zoom-ctrl { position: absolute; right: 12px; bottom: 24px; display: flex; flex-direction: column; gap: 4px; z-index: 450; }
+.zoom-btn { width: 32px; height: 32px; border-radius: 6px; background: var(--panel); border: 1px solid var(--border); color: var(--text); font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .12s; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
 .zoom-btn:hover { border-color: var(--accent2); color: var(--accent); }
-
-/* トースト */
-.toast {
-  position: fixed;
-  bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%) translateY(60px);
-  background: var(--text);
-  color: white;
-  padding: 8px 18px;
-  border-radius: 20px;
-  font-size: 12px;
-  transition: transform .3s cubic-bezier(.34,1.56,.64,1);
-  z-index: 9999;
-  pointer-events: none;
-}
+.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(60px); background: var(--text); color: white; padding: 8px 18px; border-radius: 20px; font-size: 12px; transition: transform .3s cubic-bezier(.34,1.56,.64,1); z-index: 9999; pointer-events: none; }
 .toast.show { transform: translateX(-50%) translateY(0); }
-
-/* ローディング */
-#loading {
-  position: absolute;
-  inset: 0;
-  background: rgba(247,244,239,.85);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  z-index: 800;
-  font-size: 13px;
-  color: var(--muted);
-  gap: 10px;
-}
-.spinner {
-  width: 28px; height: 28px;
-  border: 2.5px solid var(--border);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: spin .7s linear infinite;
-}
+#loading { position: absolute; inset: 0; background: rgba(247,244,239,.85); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 800; font-size: 13px; color: var(--muted); gap: 10px; }
+.spinner { width: 28px; height: 28px; border: 2.5px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
-
-/* ハンバーガー */
-.hamburger {
-  display: none;
-  flex-direction: column;
-  gap: 5px;
-  cursor: pointer;
-  padding: 4px;
-  background: none;
-  border: none;
-}
-.hamburger span {
-  display: block;
-  width: 22px;
-  height: 2px;
-  background: var(--text);
-  border-radius: 2px;
-}
-#drawer-overlay {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.35);
-  z-index: 490;
-}
+.hamburger { display: none; flex-direction: column; gap: 5px; cursor: pointer; padding: 4px; background: none; border: none; }
+.hamburger span { display: block; width: 22px; height: 2px; background: var(--text); border-radius: 2px; }
+#drawer-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 490; }
 #drawer-overlay.open { display: block; }
 @media (max-width: 700px) {
   .hamburger { display: flex; }
-  aside {
-    position: fixed;
-    top: 0; left: -270px;
-    width: 270px; height: 100%;
-    z-index: 500;
-    transition: left .25s cubic-bezier(.4,0,.2,1);
-    box-shadow: 2px 0 16px rgba(0,0,0,.15);
-  }
+  aside { position: fixed; top: 0; left: -290px; width: 290px; height: 100%; z-index: 500; transition: left .25s cubic-bezier(.4,0,.2,1); box-shadow: 2px 0 16px rgba(0,0,0,.15); }
   aside.open { left: 0; }
   .subtitle { display: none; }
 }
-
-/* モーダル（テキスト入力） */
-.modal-bg {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,.4);
-  z-index: 2000;
-  align-items: center;
-  justify-content: center;
-}
+.modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.4); z-index: 2000; align-items: center; justify-content: center; }
 .modal-bg.open { display: flex; }
-.modal {
-  background: var(--panel);
-  border-radius: 12px;
-  padding: 20px 22px;
-  width: 280px;
-  box-shadow: 0 8px 32px rgba(0,0,0,.2);
-}
+.modal { background: var(--panel); border-radius: 12px; padding: 20px 22px; width: 280px; box-shadow: 0 8px 32px rgba(0,0,0,.2); }
 .modal h3 { font-size: 14px; margin-bottom: 12px; color: var(--text); }
-.modal input[type=text] {
-  width: 100%;
-  padding: 8px 10px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  font-size: 13px;
-  font-family: inherit;
-  color: var(--text);
-  background: var(--bg);
-  outline: none;
-  margin-bottom: 10px;
-}
+.modal input[type=text] { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; font-family: inherit; color: var(--text); background: var(--bg); outline: none; margin-bottom: 10px; }
 .modal input[type=text]:focus { border-color: var(--accent2); }
 .modal-row { display: flex; gap: 8px; }
 .modal-row .btn { margin-top: 0; }
 </style>
 </head>
 <body>
-
 <header>
-  <button class="hamburger" id="hamburger" onclick="toggleDrawer()">
-    <span></span><span></span><span></span>
-  </button>
+  <button class="hamburger" id="hamburger" onclick="toggleDrawer()"><span></span><span></span><span></span></button>
   <div class="logo">🗺️</div>
   <div>
-    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.1.6</span></div>
+    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.2.0</span></div>
     <div class="subtitle">れきしてき ぎょうせいくいき ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -516,9 +115,7 @@ input[type=color] { opacity: 0; position: absolute; width: 0; height: 0; }
     <a href="index.html" class="hd-link">ぬりちず →</a>
   </div>
 </header>
-
 <div id="drawer-overlay" onclick="closeDrawer()"></div>
-
 <div class="body">
   <aside id="aside">
 
@@ -533,59 +130,49 @@ input[type=color] { opacity: 0; position: absolute; width: 0; height: 0; }
       <div class="palette" id="palette"></div>
     </div>
 
+    <!-- まとめて ぬる -->
+    <div class="sec">
+      <div class="sec-h">まとめて ぬる</div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn" id="btn-rect-paint" onclick="setRectMode('paint')" style="flex:1;">🖌️ ぬる</button>
+        <button class="btn" id="btn-rect-erase" onclick="setRectMode('erase')" style="flex:1;">🗑️ けす</button>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5;" id="rect-hint">ドラッグ で まとめて ぬれるヨ</div>
+    </div>
+
     <!-- じだいえらび -->
     <div class="sec">
       <div class="sec-h">じだい えらび</div>
       <select class="sel" id="era-sel" onchange="changeEra(this.value)">
         <option value="1920">1920年（大正9年）昭和大合併まえ</option>
-        <option value="1950">1950年（昭和25年）昭和大合併まえ</option>
-        <option value="2000">2000年（平成12年）平成大合併まえ</option>
+        <option value="1950">1950年（昭和25年）※じゅんびちゅう</option>
+        <option value="2000">2000年（平成12年）※じゅんびちゅう</option>
       </select>
-      <div style="font-size:10px;color:var(--muted);margin-top:6px;line-height:1.6;" id="era-note">
-        データ：歴史的行政区域データセットβ版（CODH, CC BY 4.0）
-      </div>
+      <div style="font-size:10px;color:var(--muted);margin-top:6px;line-height:1.6;" id="era-note">データ：国土数値情報（国交省）</div>
     </div>
 
-    <!-- グループかんり -->
+    <!-- けん せんたく -->
     <div class="sec">
-      <div class="sec-h">グループ かんり</div>
-      <div id="grp-list"></div>
-      <button class="btn-add-grp" onclick="addGroup()">＋ グループ ついか</button>
+      <div class="sec-h">ひょうじ する けん</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">えらんだ けん の ポリゴン を ひょうじ</div>
+      <select class="sel" id="pref-add-sel"><option value="">── けん を えらぶ ──</option></select>
+      <button class="btn" onclick="addPref()" style="margin-top:6px;">＋ ひょうじ に ついか</button>
+      <div class="pref-tags" id="pref-tags"></div>
     </div>
 
-    <!-- OSMとうかど -->
+    <!-- そとわく -->
     <div class="sec">
-      <div class="sec-h">ちず とうかど</div>
-      <div class="slider-row">
-        <span class="slider-label">ポリゴン そう</span>
-        <input type="range" min="0" max="100" step="1" value="75"
-          style="flex:1;accent-color:var(--accent);"
-          oninput="setPolyOpacity(this.value)">
-        <span class="slider-val" id="poly-opacity-val">75%</span>
-      </div>
-      <div class="slider-row" style="margin-top:6px;">
-        <span class="slider-label">OSM タイル</span>
-        <input type="range" min="0" max="100" step="1" value="20"
-          style="flex:1;accent-color:var(--accent);"
-          oninput="setTileOpacity(this.value)">
-        <span class="slider-val" id="tile-opacity-val">20%</span>
-      </div>
-    </div>
-
-    <!-- さかいせん -->
-    <div class="sec">
-      <div class="sec-h">うちわく さかいせん（グループない）</div>
+      <div class="sec-h">そとわく（いろ ごと）</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">おなじ いろ で ぬった はんい に そとわく</div>
       <div style="display:flex;flex-direction:column;gap:7px;">
         <div class="slider-row">
           <span class="slider-label">ふとさ</span>
-          <input type="range" id="inner-width" min="0" max="6" step="0.5" value="0.5"
-            style="flex:1;accent-color:var(--accent);"
-            oninput="setInnerBorderWidth(this.value)">
-          <span class="slider-val" id="inner-width-val">0.5</span>
+          <input type="range" id="outline-width" min="0" max="8" step="0.5" value="2.5" style="flex:1;accent-color:var(--accent);" oninput="setOutlineWidth(this.value)">
+          <span class="slider-val" id="outline-width-val">2.5</span>
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
-          <span style="font-size:11px;color:var(--muted);white-space:nowrap;min-width:64px;">しゅるい</span>
-          <select class="sel" id="inner-dash" onchange="setInnerBorderDash(this.value)" style="flex:1;font-size:11px;">
+          <span style="font-size:11px;color:var(--muted);min-width:60px;">しゅるい</span>
+          <select class="sel" id="outline-dash" onchange="setOutlineDash(this.value)" style="flex:1;font-size:11px;">
             <option value="none">──── 実線</option>
             <option value="4,3">- - - - はせん</option>
             <option value="2,2">···· てんせん</option>
@@ -595,7 +182,33 @@ input[type=color] { opacity: 0; position: absolute; width: 0; height: 0; }
       </div>
     </div>
 
-    <!-- 市区町村名 ラベル -->
+    <!-- さかいせん -->
+    <div class="sec">
+      <div class="sec-h">市区町村 さかいせん</div>
+      <div style="display:flex;flex-direction:column;gap:7px;">
+        <div class="color-row">
+          <div class="color-preview" id="borderMuniPreview" onclick="document.getElementById('borderMuniPicker').click()" style="background:#b09080;"></div>
+          <input type="color" id="borderMuniPicker" value="#b09080" oninput="setBorderMuniColor(this.value)">
+          <span style="font-size:12px;color:var(--muted);">いろ</span>
+        </div>
+        <div class="slider-row">
+          <span class="slider-label">ふとさ</span>
+          <input type="range" id="border-muni-width" min="0" max="6" step="0.5" value="0.4" style="flex:1;accent-color:var(--accent);" oninput="setBorderMuniWidth(this.value)">
+          <span class="slider-val" id="border-muni-width-val">0.4</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:11px;color:var(--muted);min-width:60px;">しゅるい</span>
+          <select class="sel" id="border-muni-dash" onchange="setBorderMuniDash(this.value)" style="flex:1;font-size:11px;">
+            <option value="none">──── 実線</option>
+            <option value="4,3">- - - - はせん</option>
+            <option value="2,2">···· てんせん</option>
+            <option value="8,3,2,3">─·─· 一点鎖線</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- ラベル -->
     <div class="sec">
       <div class="sec-h">市区町村名 ラベル</div>
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
@@ -605,12 +218,10 @@ input[type=color] { opacity: 0; position: absolute; width: 0; height: 0; }
         </label>
       </div>
       <div style="display:flex;flex-direction:column;gap:8px;" id="label-size-row">
-        <div style="display:flex;align-items:center;gap:8px;">
-          <span style="font-size:11px;color:var(--muted);white-space:nowrap;">おおきさ</span>
-          <input type="range" id="label-size" min="0.05" max="8" step="0.05" value="1.0"
-            oninput="updateLabelSize(this.value)"
-            style="flex:1;accent-color:var(--accent);">
-          <span style="font-size:11px;color:var(--muted);min-width:28px;" id="label-size-val">1.0</span>
+        <div class="slider-row">
+          <span class="slider-label">おおきさ</span>
+          <input type="range" id="label-size" min="0.05" max="8" step="0.05" value="1.0" style="flex:1;accent-color:var(--accent);" oninput="updateLabelSize(this.value)">
+          <span class="slider-val" id="label-size-val">1.0</span>
         </div>
         <div class="color-row">
           <div class="color-preview" id="labelColorPreview" onclick="document.getElementById('labelColorPicker').click()" style="background:rgba(40,32,20,0.65);"></div>
@@ -620,19 +231,30 @@ input[type=color] { opacity: 0; position: absolute; width: 0; height: 0; }
       </div>
     </div>
 
+    <!-- とうかど -->
+    <div class="sec">
+      <div class="sec-h">ちず とうかど</div>
+      <div class="slider-row">
+        <span class="slider-label">ポリゴン</span>
+        <input type="range" min="0" max="100" step="1" value="75" style="flex:1;accent-color:var(--accent);" oninput="setPolyOpacity(this.value)">
+        <span class="slider-val" id="poly-opacity-val">75%</span>
+      </div>
+      <div class="slider-row" style="margin-top:6px;">
+        <span class="slider-label">OSM タイル</span>
+        <input type="range" min="0" max="100" step="1" value="20" style="flex:1;accent-color:var(--accent);" oninput="setTileOpacity(this.value)">
+        <span class="slider-val" id="tile-opacity-val">20%</span>
+      </div>
+    </div>
+
     <!-- テキスト -->
     <div class="sec">
       <div class="sec-h">テキスト にゅうりょく</div>
       <button class="btn" id="btn-text-mode" onclick="toggleTextMode()">✏️ テキスト モード OFF</button>
-      <div style="font-size:10px;color:var(--muted);margin-top:5px;line-height:1.6;">
-        ON に して ちず を クリックする と もじ おけるヨ
-      </div>
+      <div style="font-size:10px;color:var(--muted);margin-top:5px;line-height:1.6;">ON に して ちず を クリックする と もじ おけるヨ</div>
       <div style="display:flex;flex-direction:column;gap:7px;margin-top:8px;">
         <div class="slider-row">
           <span class="slider-label">もじ おおきさ</span>
-          <input type="range" id="text-size" min="8" max="48" step="1" value="16"
-            style="flex:1;accent-color:var(--accent);"
-            oninput="document.getElementById('text-size-val').textContent=this.value+'px'">
+          <input type="range" id="text-size" min="8" max="48" step="1" value="16" style="flex:1;accent-color:var(--accent);" oninput="document.getElementById('text-size-val').textContent=this.value+'px'">
           <span class="slider-val" id="text-size-val">16px</span>
         </div>
         <div class="color-row">
@@ -643,7 +265,7 @@ input[type=color] { opacity: 0; position: absolute; width: 0; height: 0; }
       </div>
     </div>
 
-    <!-- セーブ/ロード -->
+    <!-- データ -->
     <div class="sec">
       <div class="sec-h">データ</div>
       <button class="btn primary" onclick="saveData()">💾 セーブ（JSON）</button>
@@ -652,11 +274,17 @@ input[type=color] { opacity: 0; position: absolute; width: 0; height: 0; }
       <button class="btn danger" onclick="clearAll()">🗑 ぜんぶ クリア</button>
     </div>
 
-    <!-- キャプチャ -->
+    <!-- ほぞん -->
     <div class="sec">
       <div class="sec-h">ほぞん</div>
       <button class="btn primary" onclick="capturePNG()">📷 PNG で ほぞん</button>
       <button class="btn" onclick="captureSVG()">📐 SVG で ほぞん（イラストレタ よう）</button>
+    </div>
+
+    <!-- ぬった リスト -->
+    <div class="mlist-wrap">
+      <div class="empty" id="mlist-empty">クリックして<br>市区町村を<br>ぬってみよう！</div>
+      <div id="mlist"></div>
     </div>
 
   </aside>
@@ -664,9 +292,7 @@ input[type=color] { opacity: 0; position: absolute; width: 0; height: 0; }
   <div id="map-wrap">
     <div id="loading"><div class="spinner"></div>データ よみこみちゅう…</div>
     <div id="leaflet-map"></div>
-    <svg id="svg-overlay"></svg>
     <div id="text-overlay"></div>
-
     <div class="zoom-ctrl">
       <button class="zoom-btn" onclick="lmap.zoomIn()">＋</button>
       <button class="zoom-btn" onclick="lmap.setView([36.5,136.5],5)">⌂</button>
@@ -675,7 +301,6 @@ input[type=color] { opacity: 0; position: absolute; width: 0; height: 0; }
   </div>
 </div>
 
-<!-- テキスト入力モーダル -->
 <div class="modal-bg" id="text-modal">
   <div class="modal">
     <h3>テキスト にゅうりょく</h3>
@@ -686,7 +311,6 @@ input[type=color] { opacity: 0; position: absolute; width: 0; height: 0; }
     </div>
   </div>
 </div>
-
 <div class="toast" id="toast"></div>
 
 <script>
@@ -700,14 +324,12 @@ const PRESET_COLORS = [
   '#80b8e8','#b0a0e0','#e0a0d0','#ffffff','#1a1a1a',
 ];
 let currentColor = '#e05030';
-
 function initPalette() {
   const pal = document.getElementById('palette');
   PRESET_COLORS.forEach(c => {
     const sw = document.createElement('div');
     sw.className = 'swatch' + (c === currentColor ? ' active' : '');
-    sw.style.background = c;
-    sw.title = c;
+    sw.style.background = c; sw.title = c;
     sw.onclick = () => setCurrentColor(c);
     pal.appendChild(sw);
   });
@@ -724,72 +346,39 @@ function setCurrentColor(c) {
 // データ
 // =====================================================
 let features = [];
-let topoData = null;
-let paintMap = new Map();   // code -> { color, groupId }
+let paintMap = new Map();
 let currentEra = '1920';
+let activePrefs = [];
+let borderMuniColor = '#b09080', borderMuniWidth = 0.4, borderMuniDash = 'none';
+let outlineWidth = 2.5, outlineDash = 'none';
+let showLabel = false, labelSize = 1.0, labelColor = 'rgba(40,32,20,0.65)';
 
-// グループ管理
-let groups = [];
-let groupCounter = 0;
-const GROUP_COLORS = [
-  '#e07070','#70b8e0','#80cc80','#e0b870','#c080d0',
-  '#e09060','#60c0c0','#d070a0','#a0a0e0','#90c870',
-];
-
-function newGroup(name, color) {
-  groupCounter++;
-  return {
-    id: 'g' + groupCounter,
-    name: name || 'グループ' + groupCounter,
-    color: color || GROUP_COLORS[(groupCounter - 1) % GROUP_COLORS.length],
-    innerWidth: 0.5,
-    innerDash: 'none',
-    outerWidth: 2.5,
-    outerDash: 'none',
-    open: true,
-  };
-}
-
-// アクティブグループ
-let activeGroupId = null;
+function setBorderMuniColor(c) { borderMuniColor = c; document.getElementById('borderMuniPreview').style.background = c; redrawBorders(); }
+function setBorderMuniWidth(v) { borderMuniWidth = parseFloat(v); document.getElementById('border-muni-width-val').textContent = v; redrawBorders(); }
+function setBorderMuniDash(v)  { borderMuniDash = v; redrawBorders(); }
+function setOutlineWidth(v)    { outlineWidth = parseFloat(v); document.getElementById('outline-width-val').textContent = v; redrawOutlines(); }
+function setOutlineDash(v)     { outlineDash = v; redrawOutlines(); }
 
 // =====================================================
-// Leaflet 地図
+// Leaflet
 // =====================================================
-let lmap;
-let tileLayer;
-let svgOverlay;
-let gPoly, gBorder, gOuter;
+let lmap, tileLayer, svgOverlay, gPoly, gBorder, gOuter, gLabels;
 
 function initMap() {
-  lmap = L.map('leaflet-map', {
-    center: [36.5, 136.5],
-    zoom: 5,
-    zoomControl: false,
-    attributionControl: true,
-  });
-
+  lmap = L.map('leaflet-map', { center: [36.5, 136.5], zoom: 5, zoomControl: false });
   tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    maxZoom: 18,
-    opacity: 0.2,
+    maxZoom: 18, opacity: 0.2,
   }).addTo(lmap);
-
-  // Leaflet の SVG レイヤ として かさねる
-  // これで ドラッグ・ズーム に じどう れんどう する
   const svgLayer = L.svg({ padding: 0 }).addTo(lmap);
   svgOverlay = d3.select(svgLayer._container);
   gPoly   = svgOverlay.append('g').attr('class', 'g-poly');
   gBorder = svgOverlay.append('g').attr('class', 'g-border');
   gOuter  = svgOverlay.append('g').attr('class', 'g-outer');
-  initLabels();
-
-  lmap.on('zoomend moveend zoom move', updateSvgOverlay);
+  gLabels = svgOverlay.append('g').attr('class', 'g-labels').style('display', 'none');
+  lmap.on('zoom move zoomend moveend', updateSvgOverlay);
 }
 
-// =====================================================
-// SVGオーバーレイ: LatLng→ピクセル変換
-// =====================================================
 function projectPoint(lat, lng) {
   const pt = lmap.latLngToLayerPoint(L.latLng(lat, lng));
   return [pt.x, pt.y];
@@ -797,413 +386,141 @@ function projectPoint(lat, lng) {
 
 function geoPathFn(feature) {
   if (!feature || !feature.geometry) return '';
-  const coords = [];
-  function processRing(ring) {
-    return ring.map(([lng, lat]) => projectPoint(lat, lng));
-  }
   const geom = feature.geometry;
   let paths = '';
   const rings = geom.type === 'Polygon' ? [geom.coordinates] : geom.coordinates;
   rings.forEach(poly => {
-    poly.forEach((ring, i) => {
-      const pts = processRing(ring);
+    poly.forEach(ring => {
+      const pts = ring.map(([lng, lat]) => projectPoint(lat, lng));
       if (!pts.length) return;
-      const d = pts.map((p, j) => (j === 0 ? `M${p[0].toFixed(1)},${p[1].toFixed(1)}` : `L${p[0].toFixed(1)},${p[1].toFixed(1)}`)).join('') + 'Z';
-      paths += d;
+      paths += pts.map((p, j) => (j === 0 ? `M${p[0].toFixed(1)},${p[1].toFixed(1)}` : `L${p[0].toFixed(1)},${p[1].toFixed(1)}`)).join('') + 'Z';
     });
   });
   return paths;
 }
 
+function getCentroid(f) {
+  const geom = f.geometry;
+  if (!geom) return [36.5, 136.5];
+  let coords = geom.type === 'Polygon' ? geom.coordinates[0] : (geom.coordinates[0] || [[]])[0];
+  if (!coords || !coords.length) return [36.5, 136.5];
+  return [coords.reduce((s,c) => s+c[1], 0)/coords.length, coords.reduce((s,c) => s+c[0], 0)/coords.length];
+}
+
 function updateSvgOverlay() {
   if (!features.length) return;
-  gPoly.selectAll('path:not(.grp-inner)').each(function(d) {
-    d3.select(this).attr('d', geoPathFn(d));
-  });
-  gBorder.selectAll('path').each(function(d) {
-    d3.select(this).attr('d', geoPathFn(d));
-  });
+  gPoly.selectAll('path').each(function(d) { d3.select(this).attr('d', geoPathFn(d)); });
+  gBorder.selectAll('path').each(function(d) { d3.select(this).attr('d', geoPathFn(d)); });
   redrawOutlines();
-  updateLabelPositions();
+  if (showLabel) updateLabelPositions();
   updateTextPositions();
 }
 
 // =====================================================
-// 地図ポリゴン描画
+// ちず えがく
 // =====================================================
 function buildMap() {
   if (!features.length) return;
-
   gPoly.selectAll('path').remove();
-  gBorder.selectAll('path').remove();
-
   gPoly.selectAll('path')
     .data(features)
     .enter().append('path')
     .attr('d', d => geoPathFn(d))
-    .attr('fill', d => {
-      const info = paintMap.get(getCode(d));
-      return info ? info.color : 'rgba(220,210,200,0.6)';
-    })
+    .attr('fill', d => paintMap.get(getCode(d)) || 'rgba(220,210,200,0.6)')
     .attr('stroke', 'none')
     .style('cursor', 'pointer')
     .on('click', function(ev, d) {
-      if (textMode) return;
+      if (textMode || rectMode) return;
       if (ev && ev.stopPropagation) ev.stopPropagation();
       const code = getCode(d);
       if (!code) return;
-      const info = paintMap.get(code);
-      // グループ あり の ばあい
-      if (activeGroupId) {
-        if (info && info.groupId === activeGroupId) {
-          paintMap.delete(code);
-          d3.select(this).attr('fill', 'rgba(220,210,200,0.6)');
-        } else {
-          const grp = groups.find(g => g.id === activeGroupId);
-          paintMap.set(code, { color: grp.color, groupId: activeGroupId, name: getName(d) });
-          d3.select(this).attr('fill', grp.color);
-        }
+      if (paintMap.has(code) && paintMap.get(code) === currentColor) {
+        paintMap.delete(code);
+        d3.select(this).attr('fill', 'rgba(220,210,200,0.6)');
       } else {
-        // グループ なし の ばあい（いまの ぬりちず と おなじ）
-        if (info && info.color === currentColor) {
-          paintMap.delete(code);
-          d3.select(this).attr('fill', 'rgba(220,210,200,0.6)');
-        } else {
-          paintMap.set(code, { color: currentColor, groupId: null, name: getName(d) });
-          d3.select(this).attr('fill', currentColor);
-        }
+        paintMap.set(code, currentColor);
+        d3.select(this).attr('fill', currentColor);
       }
       redrawOutlines();
-      renderGroups();
+      updateSidebar();
       updateStats();
     });
-
-  // うちわくさかいせん（全体）
-  redrawInnerBorder();
+  redrawBorders();
   redrawOutlines();
   if (showLabel) buildLabels();
   document.getElementById('loading').style.display = 'none';
 }
 
 // =====================================================
-// うちわく（グループ内さかい）
+// さかいせん・そとわく
 // =====================================================
-let innerBorderWidth = 0.5;
-let innerBorderDash = 'none';
-
-function setInnerBorderWidth(v) {
-  innerBorderWidth = parseFloat(v);
-  document.getElementById('inner-width-val').textContent = v;
-  redrawInnerBorder();
-}
-function setInnerBorderDash(v) {
-  innerBorderDash = v;
-  redrawInnerBorder();
-}
-
-function redrawInnerBorder() {
+function redrawBorders() {
   gBorder.selectAll('path').remove();
-  if (innerBorderWidth <= 0) return;
-  features.forEach(f => {
-    const d = geoPathFn(f);
-    if (!d) return;
-    gBorder.append('path')
-      .datum(f)
-      .attr('d', d)
-      .attr('fill', 'none')
-      .attr('stroke', 'rgba(100,80,60,0.4)')
-      .attr('stroke-width', innerBorderWidth)
-      .attr('stroke-dasharray', innerBorderDash === 'none' ? null : innerBorderDash)
-      .style('pointer-events', 'none')
-      .style('cursor', 'default');
-  });
+  if (borderMuniWidth <= 0 || !features.length) return;
+  const allPaths = features.map(f => geoPathFn(f)).filter(Boolean).join('');
+  gBorder.append('path')
+    .attr('d', allPaths).attr('fill', 'none')
+    .attr('stroke', borderMuniColor).attr('stroke-width', borderMuniWidth)
+    .attr('stroke-dasharray', borderMuniDash === 'none' ? null : borderMuniDash)
+    .style('pointer-events', 'none');
 }
 
-// グループ うちわく（グループ ない の さかいせん と べつに かく）
-function redrawGroupInners() {
-  gPoly.selectAll('.grp-inner').remove();
-  groups.forEach(grp => {
-    if (grp.innerWidth <= 0) return;
-    const members = features.filter(f => {
-      const info = paintMap.get(getCode(f));
-      return info && info.groupId === grp.id;
-    });
-    members.forEach(f => {
-      const d = geoPathFn(f);
-      if (!d) return;
-      gPoly.append('path')
-        .attr('class', 'grp-inner')
-        .attr('d', d)
-        .attr('fill', 'none')
-        .attr('stroke', grp.color)
-        .attr('stroke-width', grp.innerWidth)
-        .attr('stroke-dasharray', grp.innerDash === 'none' ? null : grp.innerDash)
-        .style('pointer-events', 'none');
-    });
-  });
-}
-
-// =====================================================
-// そとわく（グループ外枠）- topojson.merge()風に隣接ポリゴンをマージ
-// =====================================================
 function redrawOutlines() {
   gOuter.selectAll('path').remove();
-  groups.forEach(grp => {
-    if (grp.outerWidth <= 0) return;
-    const members = features.filter(f => {
-      const info = paintMap.get(getCode(f));
-      return info && info.groupId === grp.id;
-    });
+  if (outlineWidth <= 0 || !features.length) return;
+  const colorGroups = new Map();
+  paintMap.forEach((color, code) => {
+    if (!colorGroups.has(color)) colorGroups.set(color, []);
+    colorGroups.get(color).push(code);
+  });
+  colorGroups.forEach((codes, color) => {
+    const members = features.filter(f => codes.includes(getCode(f)));
     if (!members.length) return;
     const allPaths = members.map(f => geoPathFn(f)).filter(Boolean).join('');
     if (!allPaths) return;
     gOuter.append('path')
-      .attr('d', allPaths)
-      .attr('fill', 'none')
-      .attr('stroke', grp.color)
-      .attr('stroke-width', grp.outerWidth)
-      .attr('stroke-dasharray', grp.outerDash === 'none' ? null : grp.outerDash)
-      .attr('stroke-linejoin', 'round')
-      .attr('stroke-linecap', 'round')
+      .attr('d', allPaths).attr('fill', 'none')
+      .attr('stroke', color).attr('stroke-width', outlineWidth)
+      .attr('stroke-dasharray', outlineDash === 'none' ? null : outlineDash)
+      .attr('stroke-linejoin', 'round').attr('stroke-linecap', 'round')
       .style('pointer-events', 'none');
   });
-  redrawGroupInners();
-}
-
-// =====================================================
-// グループUI
-// =====================================================
-function addGroup() {
-  const grp = newGroup();
-  groups.push(grp);
-  activeGroupId = grp.id;
-  renderGroups();
-  toast(`${grp.name} ついかしたヨ！`);
-}
-
-function renderGroups() {
-  const list = document.getElementById('grp-list');
-  list.innerHTML = '';
-
-  if (!groups.length) {
-    list.innerHTML = '<div style="font-size:11px;color:var(--muted);text-align:center;padding:8px 0;line-height:1.7;">グループ を ついか して<br>ちず を ぬりはじめよう！</div>';
-    return;
-  }
-
-  groups.forEach(grp => {
-    const members = [...paintMap.values()].filter(v => v.groupId === grp.id);
-    const isActive = grp.id === activeGroupId;
-
-    const card = document.createElement('div');
-    card.className = 'grp-card';
-    if (isActive) card.style.borderColor = grp.color;
-
-    card.innerHTML = `
-      <div class="grp-header" onclick="selectGroup('${grp.id}')">
-        <div class="grp-swatch" style="background:${grp.color};"></div>
-        <span class="grp-name">${grp.name}</span>
-        <span class="grp-count">${members.length}</span>
-        <span class="grp-chev ${grp.open ? 'open' : ''}" id="chev-${grp.id}">▶</span>
-      </div>
-      <div class="grp-body ${grp.open ? 'open' : ''}" id="body-${grp.id}">
-        <div style="display:flex;flex-direction:column;gap:6px;">
-          <div class="slider-row">
-            <span class="slider-label">うちわく</span>
-            <input type="range" min="0" max="6" step="0.5" value="${grp.innerWidth}"
-              style="flex:1;accent-color:${grp.color};"
-              oninput="setGrpInner('${grp.id}',this.value)">
-            <span class="slider-val" id="gi-${grp.id}">${grp.innerWidth}</span>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;">
-            <span style="font-size:11px;color:var(--muted);min-width:64px;">しゅるい</span>
-            <select class="sel" style="flex:1;font-size:11px;" onchange="setGrpInnerDash('${grp.id}',this.value)">
-              <option value="none" ${grp.innerDash==='none'?'selected':''}>──── 実線</option>
-              <option value="4,3" ${grp.innerDash==='4,3'?'selected':''}>- - - - はせん</option>
-              <option value="2,2" ${grp.innerDash==='2,2'?'selected':''}>···· てんせん</option>
-              <option value="8,3,2,3" ${grp.innerDash==='8,3,2,3'?'selected':''}>─·─· 一点鎖線</option>
-            </select>
-          </div>
-          <div class="slider-row" style="margin-top:2px;">
-            <span class="slider-label">そとわく</span>
-            <input type="range" min="0" max="8" step="0.5" value="${grp.outerWidth}"
-              style="flex:1;accent-color:${grp.color};"
-              oninput="setGrpOuter('${grp.id}',this.value)">
-            <span class="slider-val" id="go-${grp.id}">${grp.outerWidth}</span>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;">
-            <span style="font-size:11px;color:var(--muted);min-width:64px;">しゅるい</span>
-            <select class="sel" style="flex:1;font-size:11px;" onchange="setGrpOuterDash('${grp.id}',this.value)">
-              <option value="none" ${grp.outerDash==='none'?'selected':''}>──── 実線</option>
-              <option value="4,3" ${grp.outerDash==='4,3'?'selected':''}>- - - - はせん</option>
-              <option value="2,2" ${grp.outerDash==='2,2'?'selected':''}>···· てんせん</option>
-              <option value="8,3,2,3" ${grp.outerDash==='8,3,2,3'?'selected':''}>─·─· 一点鎖線</option>
-            </select>
-          </div>
-        </div>
-        ${members.length ? `<div class="grp-members">${[...new Set(members.map(v=>v.name))].sort().join('・')}</div>` : ''}
-        <div class="grp-actions">
-          <button class="grp-btn" onclick="renameGroup('${grp.id}')">なまえ</button>
-          <button class="grp-btn" onclick="changeGroupColor('${grp.id}')">いろ</button>
-          <button class="grp-btn del" onclick="deleteGroup('${grp.id}')">けす</button>
-        </div>
-      </div>
-    `;
-    list.appendChild(card);
-  });
-}
-
-function selectGroup(id) {
-  const grp = groups.find(g => g.id === id);
-  if (!grp) return;
-  grp.open = !grp.open;
-  activeGroupId = id;
-  renderGroups();
-}
-
-function setGrpInner(id, v) {
-  const grp = groups.find(g => g.id === id);
-  if (!grp) return;
-  grp.innerWidth = parseFloat(v);
-  const el = document.getElementById('gi-' + id);
-  if (el) el.textContent = v;
-}
-function setGrpInnerDash(id, v) {
-  const grp = groups.find(g => g.id === id);
-  if (grp) grp.innerDash = v;
-}
-function setGrpOuter(id, v) {
-  const grp = groups.find(g => g.id === id);
-  if (!grp) return;
-  grp.outerWidth = parseFloat(v);
-  const el = document.getElementById('go-' + id);
-  if (el) el.textContent = v;
-  redrawOutlines();
-}
-function setGrpOuterDash(id, v) {
-  const grp = groups.find(g => g.id === id);
-  if (grp) { grp.outerDash = v; redrawOutlines(); }
-}
-
-function renameGroup(id) {
-  const grp = groups.find(g => g.id === id);
-  if (!grp) return;
-  const name = prompt('グループ の なまえ を いれてネ', grp.name);
-  if (name !== null && name.trim()) { grp.name = name.trim(); renderGroups(); }
-}
-
-function changeGroupColor(id) {
-  const grp = groups.find(g => g.id === id);
-  if (!grp) return;
-  const inp = document.createElement('input');
-  inp.type = 'color';
-  inp.value = grp.color;
-  inp.oninput = e => {
-    grp.color = e.target.value;
-    paintMap.forEach((v, k) => { if (v.groupId === id) v.color = grp.color; });
-    gPoly.selectAll('path').attr('fill', d => {
-      const info = paintMap.get(getCode(d));
-      return info ? info.color : 'rgba(220,210,200,0.6)';
-    });
-    redrawOutlines();
-    renderGroups();
-  };
-  inp.click();
-}
-
-function deleteGroup(id) {
-  if (!confirm('このグループ と ぬった いろ を けしますか？')) return;
-  groups = groups.filter(g => g.id !== id);
-  paintMap.forEach((v, k) => { if (v.groupId === id) paintMap.delete(k); });
-  if (activeGroupId === id) activeGroupId = groups.length ? groups[0].id : null;
-  gPoly.selectAll('path').attr('fill', d => {
-    const info = paintMap.get(getCode(d));
-    return info ? info.color : 'rgba(220,210,200,0.6)';
-  });
-  redrawOutlines();
-  renderGroups();
-  updateStats();
-  lmap.dragging.enable();
-  toast('グループ けしたヨ！');
-}
-
-// =====================================================
-// 透過度
-// =====================================================
-function setPolyOpacity(v) {
-  document.getElementById('poly-opacity-val').textContent = v + '%';
-  const op = v / 100;
-  gPoly.style('opacity', op);
-  gBorder.style('opacity', op);
-  gOuter.style('opacity', op);
-}
-function setTileOpacity(v) {
-  document.getElementById('tile-opacity-val').textContent = v + '%';
-  if (tileLayer) tileLayer.setOpacity(v / 100);
 }
 
 // =====================================================
 // ラベル
-let showLabel = false;
-let labelSize = 1.0;
-let labelColor = 'rgba(40,32,20,0.65)';
-let gLabels;
-
-function initLabels() {
-  gLabels = svgOverlay.append('g').attr('class', 'g-labels').style('display', 'none');
-}
-
+// =====================================================
 function toggleLabel(on) {
   showLabel = on;
   document.getElementById('label-size-row').style.opacity = on ? '1' : '0.4';
-  if (!gLabels) return;
   gLabels.style('display', on ? null : 'none');
-  if (on && !gLabels.selectAll('text').size()) buildLabels();
+  if (on && !gLabels.selectAll('text').size() && features.length) buildLabels();
 }
-
 function updateLabelSize(val) {
   labelSize = parseFloat(val);
-  document.getElementById('label-size-val').textContent = parseFloat(val).toFixed(2).replace(/\.?0+$/, '');
-  if (gLabels) gLabels.selectAll('text').attr('font-size', labelSize);
+  document.getElementById('label-size-val').textContent = parseFloat(val).toFixed(2).replace(/\.?0+$/,'');
+  gLabels.selectAll('text').attr('font-size', labelSize);
 }
-
 function updateLabelColor(val) {
   labelColor = val;
   document.getElementById('labelColorPreview').style.backgroundColor = val;
-  if (gLabels) gLabels.selectAll('text').style('fill', val);
+  gLabels.selectAll('text').style('fill', val);
 }
-
 function buildLabels() {
-  if (!gLabels || !features.length) return;
   gLabels.selectAll('text').remove();
-  gLabels.selectAll('text')
-    .data(features)
-    .enter().append('text')
-    .attr('x', d => { try { const pt = lmap.latLngToLayerPoint(L.latLng(d.geometry.coordinates ? getCentroid(d) : [0,0])); return pt.x; } catch(e) { return 0; } })
-    .attr('y', d => { try { const pt = lmap.latLngToLayerPoint(L.latLng(getCentroid(d))); return pt.y; } catch(e) { return 0; } })
-    .attr('text-anchor', 'middle')
-    .attr('dominant-baseline', 'central')
-    .attr('pointer-events', 'none')
-    .attr('font-size', labelSize)
-    .style('font-family', 'Hiragino Kaku Gothic ProN, sans-serif')
-    .style('fill', labelColor)
-    .text(d => getName(d));
+  gLabels.selectAll('text').data(features).enter().append('text')
+    .each(function(d) {
+      const [lat, lng] = getCentroid(d);
+      const pt = lmap.latLngToLayerPoint(L.latLng(lat, lng));
+      d3.select(this)
+        .attr('x', pt.x).attr('y', pt.y)
+        .attr('text-anchor', 'middle').attr('dominant-baseline', 'central')
+        .attr('pointer-events', 'none').attr('font-size', labelSize)
+        .style('font-family', 'Hiragino Kaku Gothic ProN,sans-serif')
+        .style('fill', labelColor).text(getName(d));
+    });
 }
-
-function getCentroid(f) {
-  // GeoJSON の ちゅうしん ざひょう を もとめる
-  const geom = f.geometry;
-  if (!geom) return [36.5, 136.5];
-  let coords = [];
-  if (geom.type === 'Polygon') coords = geom.coordinates[0];
-  else if (geom.type === 'MultiPolygon') coords = geom.coordinates[0][0];
-  if (!coords.length) return [36.5, 136.5];
-  const lng = coords.reduce((s, c) => s + c[0], 0) / coords.length;
-  const lat = coords.reduce((s, c) => s + c[1], 0) / coords.length;
-  return [lat, lng];
-}
-
 function updateLabelPositions() {
-  if (!gLabels || !showLabel) return;
   gLabels.selectAll('text').each(function(d) {
     const [lat, lng] = getCentroid(d);
     const pt = lmap.latLngToLayerPoint(L.latLng(lat, lng));
@@ -1211,12 +528,208 @@ function updateLabelPositions() {
   });
 }
 
-// テキスト にゅうりょく
-// ==========================================
-let textMode = false;
-let pendingTextPos = null;
-let textItems = []; // { id, x, y, lat, lng, text, size, color }
-let textCounter = 0;
+// =====================================================
+// とうかど
+// =====================================================
+function setPolyOpacity(v) {
+  document.getElementById('poly-opacity-val').textContent = v + '%';
+  [gPoly, gBorder, gOuter].forEach(g => g.style('opacity', v/100));
+}
+function setTileOpacity(v) {
+  document.getElementById('tile-opacity-val').textContent = v + '%';
+  if (tileLayer) tileLayer.setOpacity(v/100);
+}
+
+// =====================================================
+// けん せんたく
+// =====================================================
+const PREFS = ['北海道','青森県','岩手県','宮城県','秋田県','山形県','福島県','茨城県','栃木県','群馬県','埼玉県','千葉県','東京都','神奈川県','新潟県','富山県','石川県','福井県','山梨県','長野県','岐阜県','静岡県','愛知県','三重県','滋賀県','京都府','大阪府','兵庫県','奈良県','和歌山県','鳥取県','島根県','岡山県','広島県','山口県','徳島県','香川県','愛媛県','高知県','福岡県','佐賀県','長崎県','熊本県','大分県','宮崎県','鹿児島県','沖縄県'];
+const PREF_CODES = {'北海道':'01','青森県':'02','岩手県':'03','宮城県':'04','秋田県':'05','山形県':'06','福島県':'07','茨城県':'08','栃木県':'09','群馬県':'10','埼玉県':'11','千葉県':'12','東京都':'13','神奈川県':'14','新潟県':'15','富山県':'16','石川県':'17','福井県':'18','山梨県':'19','長野県':'20','岐阜県':'21','静岡県':'22','愛知県':'23','三重県':'24','滋賀県':'25','京都府':'26','大阪府':'27','兵庫県':'28','奈良県':'29','和歌山県':'30','鳥取県':'31','島根県':'32','岡山県':'33','広島県':'34','山口県':'35','徳島県':'36','香川県':'37','愛媛県':'38','高知県':'39','福岡県':'40','佐賀県':'41','長崎県':'42','熊本県':'43','大分県':'44','宮崎県':'45','鹿児島県':'46','沖縄県':'47'};
+
+const BASE = 'https://tokyo26-sudo.github.io/nurichizu';
+const prefCache = new Map();
+
+function initPrefSel() {
+  const sel = document.getElementById('pref-add-sel');
+  PREFS.forEach(p => {
+    const o = document.createElement('option');
+    o.value = p; o.textContent = p;
+    sel.appendChild(o);
+  });
+}
+
+function getPrefUrl(pref, era) {
+  const code = PREF_CODES[pref];
+  if (!code) return null;
+  if (pref === '静岡県' && era === '1920') return `${BASE}/data/shizuoka_1920.geojson`;
+  return `${BASE}/data/${era}_${code}.geojson`;
+}
+
+async function addPref() {
+  const sel = document.getElementById('pref-add-sel');
+  const pref = sel.value;
+  if (!pref) { toast('けん を えらんでネ'); return; }
+  if (activePrefs.includes(pref)) { toast(`${pref} は もう ひょうじ ちゅう デスヨ`); return; }
+  document.getElementById('loading').style.display = 'flex';
+  try {
+    await loadPrefData(pref, currentEra);
+    activePrefs.push(pref);
+    rebuildFeatures();
+    renderPrefTags();
+    toast(`${pref} ついか したヨ！`);
+  } catch(e) {
+    toast(`${pref} の データ よみこみ しっぱい…`);
+    document.getElementById('loading').style.display = 'none';
+  }
+}
+
+async function loadPrefData(pref, era) {
+  const key = `${pref}_${era}`;
+  if (prefCache.has(key)) return;
+  const url = getPrefUrl(pref, era);
+  if (!url) throw new Error('URLなし');
+  const res = await fetchWithTimeout(url, 12000);
+  if (!res.ok) throw new Error(`${res.status}`);
+  const data = await res.json();
+  const fc = data.type === 'Topology'
+    ? topojson.feature(data, data.objects[Object.keys(data.objects)[0]])
+    : data;
+  prefCache.set(key, fc.features || []);
+}
+
+function rebuildFeatures() {
+  features = [];
+  activePrefs.forEach(pref => {
+    const fs = prefCache.get(`${pref}_${currentEra}`) || [];
+    features = features.concat(fs);
+  });
+  buildMap();
+  updateSidebar();
+  updateStats();
+}
+
+function removePref(pref) {
+  activePrefs = activePrefs.filter(p => p !== pref);
+  rebuildFeatures();
+  renderPrefTags();
+  toast(`${pref} を はずしたヨ`);
+}
+
+function renderPrefTags() {
+  const el = document.getElementById('pref-tags');
+  el.innerHTML = '';
+  activePrefs.forEach(pref => {
+    const tag = document.createElement('div');
+    tag.className = 'pref-tag active';
+    tag.textContent = pref + ' ✕';
+    tag.onclick = () => removePref(pref);
+    el.appendChild(tag);
+  });
+}
+
+async function changeEra(year) {
+  currentEra = year;
+  if (!activePrefs.length) return;
+  document.getElementById('loading').style.display = 'flex';
+  try {
+    for (const pref of activePrefs) await loadPrefData(pref, year).catch(() => {});
+    rebuildFeatures();
+    toast(`${year}年 に きりかえたヨ！`);
+  } catch(e) {}
+  document.getElementById('loading').style.display = 'none';
+}
+
+// =====================================================
+// くけい せんたく
+// =====================================================
+let rectMode = null;
+
+function setRectMode(mode) {
+  if (rectMode === mode) {
+    rectMode = null;
+    document.getElementById('btn-rect-paint').classList.remove('active');
+    document.getElementById('btn-rect-erase').classList.remove('active');
+    document.getElementById('rect-hint').textContent = 'ドラッグ で まとめて ぬれるヨ';
+    lmap.dragging.enable();
+    const old = document.getElementById('rect-svg-overlay');
+    if (old) old.remove();
+    return;
+  }
+  rectMode = mode;
+  document.getElementById('btn-rect-paint').classList.toggle('active', mode === 'paint');
+  document.getElementById('btn-rect-erase').classList.toggle('active', mode === 'erase');
+  document.getElementById('rect-hint').textContent = mode === 'paint' ? 'ドラッグ で まとめて ぬれるヨ' : 'ドラッグ で まとめて けせるヨ';
+  lmap.dragging.disable();
+
+  const mapWrap = document.getElementById('map-wrap');
+  const old = document.getElementById('rect-svg-overlay');
+  if (old) old.remove();
+  const rectSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  rectSvg.id = 'rect-svg-overlay';
+  rectSvg.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:all;z-index:420;cursor:crosshair;';
+  const selRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+  selRect.setAttribute('fill', 'rgba(100,150,255,0.15)');
+  selRect.setAttribute('stroke', '#4070e0');
+  selRect.setAttribute('stroke-width', '1.5');
+  selRect.setAttribute('stroke-dasharray', '5,3');
+  selRect.style.display = 'none';
+  rectSvg.appendChild(selRect);
+  mapWrap.appendChild(rectSvg);
+
+  let dragging = false, startX, startY;
+  rectSvg.onmousedown = e => {
+    dragging = true;
+    const r = mapWrap.getBoundingClientRect();
+    startX = e.clientX - r.left; startY = e.clientY - r.top;
+    selRect.setAttribute('x', startX); selRect.setAttribute('y', startY);
+    selRect.setAttribute('width', 0); selRect.setAttribute('height', 0);
+    selRect.style.display = null; e.preventDefault();
+  };
+  const onMove = e => {
+    if (!dragging) return;
+    const r = mapWrap.getBoundingClientRect();
+    const mx = e.clientX - r.left, my = e.clientY - r.top;
+    selRect.setAttribute('x', Math.min(startX, mx)); selRect.setAttribute('y', Math.min(startY, my));
+    selRect.setAttribute('width', Math.abs(mx - startX)); selRect.setAttribute('height', Math.abs(my - startY));
+  };
+  const onUp = e => {
+    if (!dragging) return;
+    dragging = false; selRect.style.display = 'none';
+    const r = mapWrap.getBoundingClientRect();
+    const mx = e.clientX - r.left, my = e.clientY - r.top;
+    const rx0 = Math.min(startX, mx), ry0 = Math.min(startY, my);
+    const rx1 = Math.max(startX, mx), ry1 = Math.max(startY, my);
+    if (rx1-rx0 >= 4 || ry1-ry0 >= 4) applyRect(rx0, ry0, rx1, ry1);
+    window.removeEventListener('mousemove', onMove);
+    window.removeEventListener('mouseup', onUp);
+    setRectMode(null);
+  };
+  window.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup', onUp);
+}
+
+function applyRect(rx0, ry0, rx1, ry1) {
+  let changed = false;
+  gPoly.selectAll('path').each(function(d) {
+    try {
+      const [lat, lng] = getCentroid(d);
+      const pt = lmap.latLngToLayerPoint(L.latLng(lat, lng));
+      if (pt.x >= rx0 && pt.x <= rx1 && pt.y >= ry0 && pt.y <= ry1) {
+        const code = getCode(d);
+        if (!code) return;
+        if (rectMode === 'paint') { paintMap.set(code, currentColor); d3.select(this).attr('fill', currentColor); }
+        else { paintMap.delete(code); d3.select(this).attr('fill', 'rgba(220,210,200,0.6)'); }
+        changed = true;
+      }
+    } catch(e) {}
+  });
+  if (changed) { redrawOutlines(); updateSidebar(); updateStats(); }
+}
+
+// =====================================================
+// テキスト
+// =====================================================
+let textMode = false, pendingTextPos = null, textItems = [], textCounter = 0;
 
 function toggleTextMode() {
   textMode = !textMode;
@@ -1226,16 +739,14 @@ function toggleTextMode() {
   btn.style.color = textMode ? 'var(--accent)' : '';
   btn.style.borderColor = textMode ? 'var(--accent)' : '';
   overlay.classList.toggle('text-mode', textMode);
-  if (!textMode) lmap.dragging.enable();
-  else lmap.dragging.disable();
+  if (!textMode) lmap.dragging.enable(); else lmap.dragging.disable();
 }
 
 document.getElementById('text-overlay').addEventListener('click', function(e) {
   if (!textMode) return;
   const wrap = document.getElementById('map-wrap');
   const r = wrap.getBoundingClientRect();
-  const x = e.clientX - r.left;
-  const y = e.clientY - r.top;
+  const x = e.clientX - r.left, y = e.clientY - r.top;
   const latlng = lmap.layerPointToLatLng(L.point(x, y));
   pendingTextPos = { x, y, lat: latlng.lat, lng: latlng.lng };
   document.getElementById('text-input').value = '';
@@ -1251,142 +762,52 @@ document.getElementById('text-input').addEventListener('keydown', e => {
 function confirmText() {
   const val = document.getElementById('text-input').value.trim();
   if (!val || !pendingTextPos) { cancelText(); return; }
-  const size = parseInt(document.getElementById('text-size').value);
-  const color = document.getElementById('textColorPicker').value;
   textCounter++;
-  const item = {
-    id: 't' + textCounter,
-    lat: pendingTextPos.lat,
-    lng: pendingTextPos.lng,
-    x: pendingTextPos.x,
-    y: pendingTextPos.y,
-    text: val, size, color,
-  };
+  const item = { id: 't'+textCounter, lat: pendingTextPos.lat, lng: pendingTextPos.lng, x: pendingTextPos.x, y: pendingTextPos.y, text: val, size: parseInt(document.getElementById('text-size').value), color: document.getElementById('textColorPicker').value };
   textItems.push(item);
   renderTextItem(item);
   cancelText();
 }
-
-function cancelText() {
-  pendingTextPos = null;
-  document.getElementById('text-modal').classList.remove('open');
-}
+function cancelText() { pendingTextPos = null; document.getElementById('text-modal').classList.remove('open'); }
 
 function renderTextItem(item) {
   const overlay = document.getElementById('text-overlay');
   const el = document.createElement('div');
-  el.className = 'map-text';
-  el.id = 'txt-' + item.id;
-  el.style.left = item.x + 'px';
-  el.style.top = item.y + 'px';
-  el.style.fontSize = item.size + 'px';
-  el.style.color = item.color;
-  el.style.fontFamily = 'Hiragino Kaku Gothic ProN, sans-serif';
-  el.style.fontWeight = '700';
-  el.style.textShadow = '0 1px 3px rgba(255,255,255,0.8), 0 -1px 3px rgba(255,255,255,0.8)';
+  el.className = 'map-text'; el.id = 'txt-'+item.id;
+  el.style.cssText = `left:${item.x}px;top:${item.y}px;font-size:${item.size}px;color:${item.color};font-family:Hiragino Kaku Gothic ProN,sans-serif;font-weight:700;text-shadow:0 1px 3px rgba(255,255,255,0.8),0 -1px 3px rgba(255,255,255,0.8);`;
   el.textContent = item.text;
-
   const del = document.createElement('div');
-  del.className = 'text-del';
-  del.textContent = '×';
-  del.onclick = e => {
-    e.stopPropagation();
-    textItems = textItems.filter(t => t.id !== item.id);
-    el.remove();
-  };
+  del.className = 'text-del'; del.textContent = '×';
+  del.onclick = e => { e.stopPropagation(); textItems = textItems.filter(t => t.id !== item.id); el.remove(); };
   el.appendChild(del);
-
-  // ドラッグ
   let dragging = false, ox = 0, oy = 0;
   el.addEventListener('mousedown', e => {
     if (e.target === del) return;
     dragging = true;
     const r = document.getElementById('map-wrap').getBoundingClientRect();
-    ox = e.clientX - r.left - item.x;
-    oy = e.clientY - r.top - item.y;
+    ox = e.clientX - r.left - item.x; oy = e.clientY - r.top - item.y;
     e.preventDefault();
   });
   window.addEventListener('mousemove', e => {
     if (!dragging) return;
     const r = document.getElementById('map-wrap').getBoundingClientRect();
-    item.x = e.clientX - r.left - ox;
-    item.y = e.clientY - r.top - oy;
-    el.style.left = item.x + 'px';
-    el.style.top = item.y + 'px';
+    item.x = e.clientX - r.left - ox; item.y = e.clientY - r.top - oy;
+    el.style.left = item.x+'px'; el.style.top = item.y+'px';
     const ll = lmap.layerPointToLatLng(L.point(item.x, item.y));
     item.lat = ll.lat; item.lng = ll.lng;
   });
   window.addEventListener('mouseup', () => { dragging = false; });
-
   overlay.appendChild(el);
 }
 
 function updateTextPositions() {
   textItems.forEach(item => {
-    const el = document.getElementById('txt-' + item.id);
+    const el = document.getElementById('txt-'+item.id);
     if (!el) return;
     const pt = lmap.latLngToLayerPoint(L.latLng(item.lat, item.lng));
     item.x = pt.x; item.y = pt.y;
-    el.style.left = item.x + 'px';
-    el.style.top = item.y + 'px';
+    el.style.left = item.x+'px'; el.style.top = item.y+'px';
   });
-}
-
-// =====================================================
-// じだいきりかえ
-// =====================================================
-async function changeEra(year) {
-  currentEra = year;
-  document.getElementById('loading').style.display = 'flex';
-  document.getElementById('era-note').textContent = `${year}年 の データ よみこみちゅう…`;
-  try {
-    await loadEraData(year);
-    document.getElementById('era-note').textContent = `データ：歴史的行政区域データセットβ版（CODH, CC BY 4.0）`;
-    toast(`${year}年 の データ よみこんだヨ！`);
-  } catch(e) {
-    document.getElementById('era-note').textContent = `データ よみこみ しっぱい…`;
-    toast('データ よみこみ しっぱいデスネ…');
-  }
-}
-
-// じだい → GeoJSON ファイル の たいおうひょう
-const BASE_URL = 'https://tokyo26-sudo.github.io/nurichizu/data';
-const ERA_FILES = {
-  '1920': 'shizuoka_1920.geojson',
-  '1950': '1950.geojson',
-  '2000': '2000.geojson',
-};
-
-async function loadEraData(year) {
-  const filename = ERA_FILES[year];
-  if (!filename) throw new Error('データ なし');
-  const url = `${BASE_URL}/${filename}`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`よみこみ しっぱい: ${res.status}`);
-  const data = await res.json();
-  processGeoData(data);
-}
-
-function processGeoData(data) {
-  let fc;
-  if (data.type === 'Topology') {
-    topoData = data;
-    const objKey = Object.keys(data.objects)[0];
-    fc = topojson.feature(data, data.objects[objKey]);
-  } else {
-    topoData = null;
-    fc = data;
-  }
-  features = fc.features || [];
-
-  // 色をリセット（じだいかわったので）
-  paintMap.clear();
-  groups = [];
-  groupCounter = 0;
-  activeGroupId = null;
-  renderGroups();
-  updateStats();
-  buildMap();
 }
 
 // =====================================================
@@ -1394,33 +815,58 @@ function processGeoData(data) {
 // =====================================================
 function getCode(f) {
   const p = f.properties || {};
-  return p.N03_007 || p.code || p.id || p.JCODE || '';
+  return p.code || p.N03_007 || p.id || '';
 }
 function getName(f) {
   const p = f.properties || {};
-  return p.N03_004 || p.N03_003 || p.N03_002 || p.N03_001 || p.name || p.NAME || '?';
+  return p.city || p.N03_004 || p.N03_003 || p.N03_002 || p.N03_001 || p.name || '?';
 }
+function getPref(f) {
+  const p = f.properties || {};
+  return p.pref || p.N03_001 || '';
+}
+function updateStats() { document.getElementById('s-painted').textContent = paintMap.size; }
 
-function updateStats() {
-  document.getElementById('s-painted').textContent = paintMap.size;
+// =====================================================
+// サイドバー
+// =====================================================
+function updateSidebar() {
+  const list = document.getElementById('mlist');
+  const empty = document.getElementById('mlist-empty');
+  if (!paintMap.size) { empty.style.display = ''; list.innerHTML = ''; return; }
+  empty.style.display = 'none';
+  const groups = {};
+  features.forEach(f => {
+    const code = getCode(f);
+    if (!paintMap.has(code)) return;
+    const pref = getPref(f) || 'その他';
+    if (!groups[pref]) groups[pref] = [];
+    groups[pref].push({ name: getName(f), code, color: paintMap.get(code) });
+  });
+  list.innerHTML = '';
+  Object.entries(groups).forEach(([pref, items]) => {
+    const g = document.createElement('div');
+    g.innerHTML = `<div class="grp-h">${pref}</div>`;
+    items.sort((a,b) => a.name.localeCompare(b.name,'ja')).forEach(({ name, code, color }) => {
+      const mi = document.createElement('div');
+      mi.className = 'mi';
+      mi.innerHTML = `<div class="dot" style="background:${color}"></div><span class="mi-name">${name}</span><span class="mi-clear" data-code="${code}">✕</span>`;
+      mi.querySelector('.mi-clear').onclick = e => {
+        e.stopPropagation(); paintMap.delete(code);
+        gPoly.selectAll('path').filter(d => getCode(d) === code).attr('fill', 'rgba(220,210,200,0.6)');
+        redrawOutlines(); updateSidebar(); updateStats();
+      };
+      g.appendChild(mi);
+    });
+    list.appendChild(g);
+  });
 }
 
 // =====================================================
 // セーブ/ロード
 // =====================================================
 function saveData() {
-  const obj = {
-    version: 2,
-    era: currentEra,
-    groups: groups,
-    paintMap: Object.fromEntries([...paintMap.entries()].map(([k,v]) => [k,v])),
-    texts: textItems,
-    settings: {
-      innerBorderWidth, innerBorderDash,
-      polyOpacity: parseFloat(document.getElementById('poly-opacity-val').textContent),
-      tileOpacity: parseFloat(document.getElementById('tile-opacity-val').textContent),
-    }
-  };
+  const obj = { version: 3, era: currentEra, activePrefs, paintMap: Object.fromEntries(paintMap), texts: textItems };
   const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -1436,31 +882,17 @@ function loadData(ev) {
   reader.onload = async e => {
     try {
       const obj = JSON.parse(e.target.result);
-      if (obj.era && obj.era !== currentEra) {
-        document.getElementById('era-sel').value = obj.era;
-        await changeEra(obj.era);
+      if (obj.era) { document.getElementById('era-sel').value = obj.era; currentEra = obj.era; }
+      if (obj.activePrefs) {
+        for (const p of obj.activePrefs) await loadPrefData(p, currentEra).catch(() => {});
+        activePrefs = obj.activePrefs; rebuildFeatures(); renderPrefTags();
       }
-      if (obj.groups) groups = obj.groups;
-      if (obj.paintMap) {
-        paintMap.clear();
-        Object.entries(obj.paintMap).forEach(([k,v]) => paintMap.set(k, v));
-      }
-      if (obj.texts) {
-        textItems = [];
-        document.getElementById('text-overlay').innerHTML = '';
-        obj.texts.forEach(t => { textItems.push(t); renderTextItem(t); });
-      }
-      gPoly.selectAll('path').attr('fill', d => {
-        const info = paintMap.get(getCode(d));
-        return info ? info.color : 'rgba(220,210,200,0.6)';
-      });
-      redrawOutlines();
-      renderGroups();
-      updateStats();
-      toast(`ロードしたヨ！${paintMap.size} こ ぬってたヨ`);
-    } catch(err) {
-      toast('よみこみ エラー デスネ…');
-    }
+      if (obj.paintMap) { paintMap.clear(); Object.entries(obj.paintMap).forEach(([k,v]) => paintMap.set(k,v)); }
+      if (obj.texts) { textItems = []; document.getElementById('text-overlay').innerHTML = ''; obj.texts.forEach(t => { textItems.push(t); renderTextItem(t); }); }
+      gPoly.selectAll('path').attr('fill', d => paintMap.get(getCode(d)) || 'rgba(220,210,200,0.6)');
+      redrawOutlines(); updateSidebar(); updateStats();
+      toast('ロードしたヨ！');
+    } catch(err) { toast('よみこみ エラー…'); }
     ev.target.value = '';
   };
   reader.readAsText(file);
@@ -1469,144 +901,100 @@ function loadData(ev) {
 function clearAll() {
   if (!confirm('ぜんぶ クリア しますか？')) return;
   paintMap.clear();
-  groups = [];
-  groupCounter = 0;
-  activeGroupId = null;
-  textItems = [];
-  document.getElementById('text-overlay').innerHTML = '';
+  textItems = []; document.getElementById('text-overlay').innerHTML = '';
   gPoly.selectAll('path').attr('fill', 'rgba(220,210,200,0.6)');
   gOuter.selectAll('path').remove();
-  renderGroups();
-  updateStats();
+  updateSidebar(); updateStats();
   toast('クリアしたヨ！');
 }
 
 // =====================================================
-// キャプチャ PNG
+// キャプチャ
 // =====================================================
 async function capturePNG() {
   toast('PNG キャプチャ ちゅう…');
   try {
-    const wrap = document.getElementById('map-wrap');
-    const canvas = await html2canvas(wrap, { useCORS: true, scale: 2 });
+    const canvas = await html2canvas(document.getElementById('map-wrap'), { useCORS: true, scale: 2 });
     const a = document.createElement('a');
     a.download = `mukashi-nurichizu-${currentEra}.png`;
-    a.href = canvas.toDataURL('image/png');
-    a.click();
+    a.href = canvas.toDataURL('image/png'); a.click();
     toast('PNG ほぞん できたヨ！');
-  } catch(e) {
-    toast('PNG キャプチャ しっぱい…');
-  }
+  } catch(e) { toast('PNG キャプチャ しっぱい…'); }
 }
 
-// =====================================================
-// キャプチャ SVG（ポリゴン・テキストのみ）
-// =====================================================
 function captureSVG() {
   const wrap = document.getElementById('map-wrap');
-  const W = wrap.clientWidth;
-  const H = wrap.clientHeight;
-
-  let svgContent = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">`;
-  svgContent += `<rect width="${W}" height="${H}" fill="#e8e0d4"/>`;
-
-  // グループごとにポリゴンを出力
-  groups.forEach(grp => {
-    const members = features.filter(f => {
-      const info = paintMap.get(getCode(f));
-      return info && info.groupId === grp.id;
-    });
-    if (!members.length) return;
-
-    svgContent += `<g id="${grp.id}" data-name="${grp.name}">`;
-    members.forEach(f => {
-      const code = getCode(f);
-      const name = getName(f);
-      const info = paintMap.get(code);
-      const d = geoPathFn(f);
-      if (!d) return;
-      svgContent += `<path id="c${code}" data-name="${name}" fill="${info.color}" d="${d}"/>`;
-    });
-    svgContent += `</g>`;
-
-    // そとわく
-    if (grp.outerWidth > 0) {
-      const allPaths = members.map(f => geoPathFn(f)).filter(Boolean).join('');
-      const dash = grp.outerDash !== 'none' ? ` stroke-dasharray="${grp.outerDash}"` : '';
-      svgContent += `<path fill="none" stroke="${grp.color}" stroke-width="${grp.outerWidth}"${dash} stroke-linejoin="round" d="${allPaths}"/>`;
+  const W = wrap.clientWidth, H = wrap.clientHeight;
+  let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}"><rect width="${W}" height="${H}" fill="#e8e0d4"/>`;
+  const colorGroups = new Map();
+  paintMap.forEach((color, code) => { if (!colorGroups.has(color)) colorGroups.set(color, []); colorGroups.get(color).push(code); });
+  colorGroups.forEach((codes, color) => {
+    const members = features.filter(f => codes.includes(getCode(f)));
+    svg += `<g data-color="${color}">`;
+    members.forEach(f => { const d = geoPathFn(f); if (d) svg += `<path data-name="${getName(f)}" fill="${color}" d="${d}"/>`; });
+    if (outlineWidth > 0) {
+      const ap = members.map(f => geoPathFn(f)).filter(Boolean).join('');
+      const dash = outlineDash !== 'none' ? ` stroke-dasharray="${outlineDash}"` : '';
+      svg += `<path fill="none" stroke="${color}" stroke-width="${outlineWidth}"${dash} stroke-linejoin="round" d="${ap}"/>`;
     }
+    svg += `</g>`;
   });
-
-  // うちわく
-  if (innerBorderWidth > 0) {
-    const allBorder = features.map(f => geoPathFn(f)).filter(Boolean).join('');
-    const dash = innerBorderDash !== 'none' ? ` stroke-dasharray="${innerBorderDash}"` : '';
-    svgContent += `<path fill="none" stroke="rgba(100,80,60,0.4)" stroke-width="${innerBorderWidth}"${dash} d="${allBorder}"/>`;
+  if (borderMuniWidth > 0) {
+    const ap = features.map(f => geoPathFn(f)).filter(Boolean).join('');
+    const dash = borderMuniDash !== 'none' ? ` stroke-dasharray="${borderMuniDash}"` : '';
+    svg += `<path fill="none" stroke="${borderMuniColor}" stroke-width="${borderMuniWidth}"${dash} d="${ap}"/>`;
   }
-
-  // テキスト
   if (textItems.length) {
-    svgContent += `<g id="texts">`;
-    textItems.forEach(t => {
-      svgContent += `<text x="${t.x.toFixed(1)}" y="${t.y.toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="${t.size}" fill="${t.color}" font-family="sans-serif" font-weight="bold">${t.text}</text>`;
-    });
-    svgContent += `</g>`;
+    svg += `<g>`;
+    textItems.forEach(t => { svg += `<text x="${t.x.toFixed(1)}" y="${t.y.toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="${t.size}" fill="${t.color}" font-family="sans-serif" font-weight="bold">${t.text}</text>`; });
+    svg += `</g>`;
   }
-
-  svgContent += `</svg>`;
-
-  const blob = new Blob([svgContent], { type: 'image/svg+xml' });
+  svg += `</svg>`;
+  const blob = new Blob([svg], { type: 'image/svg+xml' });
   const a = document.createElement('a');
-  a.download = `mukashi-nurichizu-${currentEra}.svg`;
-  a.href = URL.createObjectURL(blob);
-  a.click();
-  toast('SVG ほぞん できたヨ！（イラストレタ で ひらけるヨ）');
+  a.download = `mukashi-nurichizu-${currentEra}.svg`; a.href = URL.createObjectURL(blob); a.click();
+  toast('SVG ほぞん できたヨ！');
 }
 
 // =====================================================
-// トースト
+// fetch
+// =====================================================
+function fetchWithTimeout(url, ms=10000) {
+  const c = new AbortController();
+  const t = setTimeout(() => c.abort(), ms);
+  return fetch(url, { signal: c.signal }).finally(() => clearTimeout(t));
+}
+
+// =====================================================
+// トースト・ドロワー
 // =====================================================
 let toastTimer;
 function toast(msg) {
   const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.classList.add('show');
+  el.textContent = msg; el.classList.add('show');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => el.classList.remove('show'), 2400);
 }
-
-// =====================================================
-// ドロワー（スマホ）
-// =====================================================
 function toggleDrawer() {
-  const aside = document.getElementById('aside');
-  const overlay = document.getElementById('drawer-overlay');
-  const open = aside.classList.toggle('open');
-  overlay.classList.toggle('open', open);
+  document.getElementById('aside').classList.toggle('open');
+  document.getElementById('drawer-overlay').classList.toggle('open', document.getElementById('aside').classList.contains('open'));
 }
 function closeDrawer() {
   document.getElementById('aside').classList.remove('open');
   document.getElementById('drawer-overlay').classList.remove('open');
 }
+window.addEventListener('resize', () => updateSvgOverlay());
 
 // =====================================================
 // きどう
 // =====================================================
-async function init() {
+function init() {
   initPalette();
+  initPrefSel();
   initMap();
-
-  try {
-    await loadEraData('1920');
-  } catch(e) {
-    document.getElementById('loading').innerHTML = '<div style="color:#7040a0;font-size:13px;text-align:center">データ よみこみ しっぱいデスネ😢<br><small>data/1920.geojson が リポジトリ に あるか かくにん してネ</small></div>';
-  }
+  document.getElementById('loading').style.display = 'none';
+  toast('けん を えらんで ちず を ひょうじ してネ！');
 }
-
-window.addEventListener('resize', () => {
-  updateSvgOverlay();
-});
-
 init();
 </script>
 </body>
