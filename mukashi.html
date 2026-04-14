@@ -508,7 +508,7 @@ input[type=color] { opacity: 0; position: absolute; width: 0; height: 0; }
   </button>
   <div class="logo">🗺️</div>
   <div>
-    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.1.5</span></div>
+    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.1.6</span></div>
     <div class="subtitle">れきしてき ぎょうせいくいき ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -591,6 +591,31 @@ input[type=color] { opacity: 0; position: absolute; width: 0; height: 0; }
             <option value="2,2">···· てんせん</option>
             <option value="8,3,2,3">─·─· 一点鎖線</option>
           </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- 市区町村名 ラベル -->
+    <div class="sec">
+      <div class="sec-h">市区町村名 ラベル</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--muted);">
+          <input type="checkbox" id="label-toggle" onchange="toggleLabel(this.checked)" style="accent-color:var(--accent);width:14px;height:14px;">
+          ひょうじ する
+        </label>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;" id="label-size-row">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:11px;color:var(--muted);white-space:nowrap;">おおきさ</span>
+          <input type="range" id="label-size" min="0.05" max="8" step="0.05" value="1.0"
+            oninput="updateLabelSize(this.value)"
+            style="flex:1;accent-color:var(--accent);">
+          <span style="font-size:11px;color:var(--muted);min-width:28px;" id="label-size-val">1.0</span>
+        </div>
+        <div class="color-row">
+          <div class="color-preview" id="labelColorPreview" onclick="document.getElementById('labelColorPicker').click()" style="background:rgba(40,32,20,0.65);"></div>
+          <input type="color" id="labelColorPicker" value="#281e10" oninput="updateLabelColor(this.value)">
+          <span style="font-size:12px;color:var(--muted);">もじ いろ</span>
         </div>
       </div>
     </div>
@@ -757,6 +782,7 @@ function initMap() {
   gPoly   = svgOverlay.append('g').attr('class', 'g-poly');
   gBorder = svgOverlay.append('g').attr('class', 'g-border');
   gOuter  = svgOverlay.append('g').attr('class', 'g-outer');
+  initLabels();
 
   lmap.on('zoomend moveend zoom move', updateSvgOverlay);
 }
@@ -798,6 +824,7 @@ function updateSvgOverlay() {
     d3.select(this).attr('d', geoPathFn(d));
   });
   redrawOutlines();
+  updateLabelPositions();
   updateTextPositions();
 }
 
@@ -854,6 +881,7 @@ function buildMap() {
   // うちわくさかいせん（全体）
   redrawInnerBorder();
   redrawOutlines();
+  if (showLabel) buildLabels();
   document.getElementById('loading').style.display = 'none';
 }
 
@@ -1114,6 +1142,75 @@ function setTileOpacity(v) {
 }
 
 // =====================================================
+// ラベル
+let showLabel = false;
+let labelSize = 1.0;
+let labelColor = 'rgba(40,32,20,0.65)';
+let gLabels;
+
+function initLabels() {
+  gLabels = svgOverlay.append('g').attr('class', 'g-labels').style('display', 'none');
+}
+
+function toggleLabel(on) {
+  showLabel = on;
+  document.getElementById('label-size-row').style.opacity = on ? '1' : '0.4';
+  if (!gLabels) return;
+  gLabels.style('display', on ? null : 'none');
+  if (on && !gLabels.selectAll('text').size()) buildLabels();
+}
+
+function updateLabelSize(val) {
+  labelSize = parseFloat(val);
+  document.getElementById('label-size-val').textContent = parseFloat(val).toFixed(2).replace(/\.?0+$/, '');
+  if (gLabels) gLabels.selectAll('text').attr('font-size', labelSize);
+}
+
+function updateLabelColor(val) {
+  labelColor = val;
+  document.getElementById('labelColorPreview').style.backgroundColor = val;
+  if (gLabels) gLabels.selectAll('text').style('fill', val);
+}
+
+function buildLabels() {
+  if (!gLabels || !features.length) return;
+  gLabels.selectAll('text').remove();
+  gLabels.selectAll('text')
+    .data(features)
+    .enter().append('text')
+    .attr('x', d => { try { const pt = lmap.latLngToLayerPoint(L.latLng(d.geometry.coordinates ? getCentroid(d) : [0,0])); return pt.x; } catch(e) { return 0; } })
+    .attr('y', d => { try { const pt = lmap.latLngToLayerPoint(L.latLng(getCentroid(d))); return pt.y; } catch(e) { return 0; } })
+    .attr('text-anchor', 'middle')
+    .attr('dominant-baseline', 'central')
+    .attr('pointer-events', 'none')
+    .attr('font-size', labelSize)
+    .style('font-family', 'Hiragino Kaku Gothic ProN, sans-serif')
+    .style('fill', labelColor)
+    .text(d => getName(d));
+}
+
+function getCentroid(f) {
+  // GeoJSON の ちゅうしん ざひょう を もとめる
+  const geom = f.geometry;
+  if (!geom) return [36.5, 136.5];
+  let coords = [];
+  if (geom.type === 'Polygon') coords = geom.coordinates[0];
+  else if (geom.type === 'MultiPolygon') coords = geom.coordinates[0][0];
+  if (!coords.length) return [36.5, 136.5];
+  const lng = coords.reduce((s, c) => s + c[0], 0) / coords.length;
+  const lat = coords.reduce((s, c) => s + c[1], 0) / coords.length;
+  return [lat, lng];
+}
+
+function updateLabelPositions() {
+  if (!gLabels || !showLabel) return;
+  gLabels.selectAll('text').each(function(d) {
+    const [lat, lng] = getCentroid(d);
+    const pt = lmap.latLngToLayerPoint(L.latLng(lat, lng));
+    d3.select(this).attr('x', pt.x).attr('y', pt.y);
+  });
+}
+
 // テキスト にゅうりょく
 // ==========================================
 let textMode = false;
