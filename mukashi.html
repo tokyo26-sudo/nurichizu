@@ -108,7 +108,7 @@ input[type=color] { opacity: 0; position: fixed; top: -100px; left: -100px; widt
   <button class="hamburger" id="hamburger" onclick="toggleDrawer()"><span></span><span></span><span></span></button>
   <div class="logo">🗺️</div>
   <div>
-    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.2.7</span></div>
+    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.2.8</span></div>
     <div class="subtitle">れきしてき ぎょうせいくいき ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -550,14 +550,9 @@ function redrawOutlines() {
     colorGroups.get(color).push(code);
   });
   colorGroups.forEach((codes, color) => {
-    // TopoJSON が あれば merge を つかう（ほんとう の そとわく だけ）
-    let d = '';
-    if (prefTopoData.length > 0) {
-      d = topoMergePath(codes);
-    } else {
-      const members = features.filter(f => codes.includes(getCode(f)));
-      d = members.map(f => geoPathFn(f)).filter(Boolean).join('');
-    }
+    // ぬった features の パス を そのまま つかう
+    const members = features.filter(f => codes.includes(getCode(f)));
+    const d = members.map(f => geoPathFn(f)).filter(Boolean).join('');
     if (!d) return;
     gOuter.append('path')
       .attr('d', d).attr('fill', 'none')
