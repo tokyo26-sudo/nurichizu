@@ -132,7 +132,7 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
   <button class="hamburger" id="hamburger" onclick="toggleDrawer()"><span></span><span></span><span></span></button>
   <div class="logo">🗺️</div>
   <div>
-    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.4.5</span></div>
+    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.4.6</span></div>
     <div class="subtitle">れきしてき ぎょうせいくいき ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -218,6 +218,7 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
       <div class="color-row">
         <div class="color-preview" id="colorPreview" style="background:#e05030"><input type="color" id="colorPicker" value="#e05030" oninput="setCurrentColor(this.value)"></div>
         <span style="font-size:12px;color:var(--muted);" id="colorHex">#e05030</span>
+        <button id="btn-eyedropper" onclick="toggleEyedropper()" style="margin-left:auto;margin-top:0;width:auto;padding:4px 8px;font-size:13px;" class="btn" title="スポイト：ぬた ところ から いろ すいとる">💉</button>
       </div>
       <div class="palette" id="palette"></div>
     </div>
@@ -357,8 +358,14 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
 
 <div class="modal-bg" id="text-modal">
   <div class="modal">
-    <h3>テキスト にゅうりょく</h3>
+    <h3 id="text-modal-title">テキスト にゅうりょく</h3>
     <input type="text" id="text-input" placeholder="例：にらやまけん" maxlength="30">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+      <span style="font-size:11px;color:var(--muted);white-space:nowrap;">おおきさ</span>
+      <input type="range" id="text-modal-size" min="8" max="48" step="1" value="16" style="flex:1;accent-color:var(--accent);">
+      <span style="font-size:11px;color:var(--muted);min-width:28px;" id="text-modal-size-val">16px</span>
+      <div class="color-preview" id="text-modal-color-preview" style="background:#2a2520;cursor:pointer;overflow:hidden;" onclick="openColorPopupFromEl(this, this.style.background, c => { this.style.background=c; })"></div>
+    </div>
     <div class="modal-row">
       <button class="btn primary" style="margin-top:0" onclick="confirmText()">おく</button>
       <button class="btn" style="margin-top:0" onclick="cancelText()">キャンセル</button>
@@ -579,6 +586,21 @@ function setCurrentColor(c) {
   document.getElementById('colorHex').textContent = c;
   document.getElementById('colorPicker').value = c;
   document.querySelectorAll('.swatch').forEach(sw => sw.classList.toggle('active', sw.title === c));
+}
+
+// =====================================================
+// スポイト モード
+// =====================================================
+let eyedropperMode = false;
+function toggleEyedropper() {
+  eyedropperMode = !eyedropperMode;
+  const btn = document.getElementById('btn-eyedropper');
+  btn.classList.toggle('active', eyedropperMode);
+  document.getElementById('map-wrap').style.cursor = eyedropperMode ? 'crosshair' : '';
+  if (eyedropperMode) {
+    // ほかの モード は OFF に する
+    if (textMode) toggleTextMode();
+  }
 }
 
 // =====================================================
@@ -866,6 +888,21 @@ function buildMap() {
     .on('click', function(ev, d) {
       if (textMode || rectMode) return;
       if (ev && ev.stopPropagation) ev.stopPropagation();
+
+      // スポイト モード
+      if (eyedropperMode) {
+        const uid = getUniqueId(d);
+        const col = paintMap.get(uid);
+        if (col) {
+          setCurrentColor(col);
+          toast('いろ すいとたヨ！ ' + col);
+        }
+        // いっかい で OFF
+        eyedropperMode = false;
+        document.getElementById('btn-eyedropper').classList.remove('active');
+        document.getElementById('map-wrap').style.cursor = '';
+        return;
+      }
       const targets = getTargetFeatures(d);
       // じどう いろかえ の「けすステップ」かどうか
       const isEraseStep = autoColorEnabled && autoColorIndex >= autoColorSlots.length;
@@ -1286,14 +1323,16 @@ function toggleTextMode() {
 
 document.getElementById('text-overlay').addEventListener('click', function(e) {
   if (!textMode) return;
+  // テキスト よそ の クリク は むし（へんしゅう は renderTextItem で ハンドル）
+  if (e.target.classList.contains('map-text') || e.target.closest('.map-text')) return;
   const wrap = document.getElementById('map-wrap');
   const r = wrap.getBoundingClientRect();
   const x = e.clientX - r.left, y = e.clientY - r.top;
-  const latlng = lmap.layerPointToLatLng(L.point(x, y));
+  const containerPt = L.point(x, y);
+  const layerPt = lmap.containerPointToLayerPoint(containerPt);
+  const latlng = lmap.layerPointToLatLng(layerPt);
   pendingTextPos = { x, y, lat: latlng.lat, lng: latlng.lng };
-  document.getElementById('text-input').value = '';
-  document.getElementById('text-modal').classList.add('open');
-  setTimeout(() => document.getElementById('text-input').focus(), 100);
+  openTextModal(null);
 });
 
 document.getElementById('text-input').addEventListener('keydown', e => {
@@ -1301,16 +1340,56 @@ document.getElementById('text-input').addEventListener('keydown', e => {
   if (e.key === 'Escape') cancelText();
 });
 
+let editingTextId = null; // へんしゅうちゅう の テキスト id
+
+function openTextModal(item) {
+  // へんしゅう モード
+  editingTextId = item ? item.id : null;
+  document.getElementById('text-modal-title').textContent = item ? 'テキスト へんしゅう' : 'テキスト にゅうりょく';
+  document.getElementById('text-input').value = item ? item.text : '';
+  const size = item ? item.size : parseInt(document.getElementById('text-size').value);
+  const color = item ? item.color : (document.getElementById('textColorPreview').style.background || '#2a2520');
+  document.getElementById('text-modal-size').value = size;
+  document.getElementById('text-modal-size-val').textContent = size + 'px';
+  document.getElementById('text-modal-color-preview').style.background = color;
+  document.getElementById('text-modal').classList.add('open');
+  setTimeout(() => document.getElementById('text-input').focus(), 100);
+}
+
+document.getElementById('text-modal-size').addEventListener('input', function() {
+  document.getElementById('text-modal-size-val').textContent = this.value + 'px';
+});
+
 function confirmText() {
   const val = document.getElementById('text-input').value.trim();
-  if (!val || !pendingTextPos) { cancelText(); return; }
+  const size = parseInt(document.getElementById('text-modal-size').value);
+  const color = document.getElementById('text-modal-color-preview').style.background || '#2a2520';
+  if (!val) { cancelText(); return; }
+
+  if (editingTextId) {
+    // へんしゅう モード：きぞん の テキスト こうしん
+    const item = textItems.find(t => t.id === editingTextId);
+    if (item) {
+      item.text = val; item.size = size; item.color = color;
+      const el = document.getElementById('txt-' + item.id);
+      if (el) {
+        el.childNodes[0].textContent = val;
+        el.style.fontSize = size + 'px';
+        el.style.color = color;
+      }
+    }
+    cancelText();
+    return;
+  }
+
+  if (!pendingTextPos) { cancelText(); return; }
   textCounter++;
-  const item = { id: 't'+textCounter, lat: pendingTextPos.lat, lng: pendingTextPos.lng, x: pendingTextPos.x, y: pendingTextPos.y, text: val, size: parseInt(document.getElementById('text-size').value), color: document.getElementById('textColorPreview').style.background || '#2a2520' };
+  const item = { id: 't'+textCounter, lat: pendingTextPos.lat, lng: pendingTextPos.lng, x: pendingTextPos.x, y: pendingTextPos.y, text: val, size, color };
   textItems.push(item);
   renderTextItem(item);
   cancelText();
 }
-function cancelText() { pendingTextPos = null; document.getElementById('text-modal').classList.remove('open'); }
+function cancelText() { pendingTextPos = null; editingTextId = null; document.getElementById('text-modal').classList.remove('open'); }
 
 function renderTextItem(item) {
   const overlay = document.getElementById('text-overlay');
@@ -1322,23 +1401,31 @@ function renderTextItem(item) {
   del.className = 'text-del'; del.textContent = '×';
   del.onclick = e => { e.stopPropagation(); textItems = textItems.filter(t => t.id !== item.id); el.remove(); };
   el.appendChild(del);
-  let dragging = false, ox = 0, oy = 0;
+  let dragging = false, moved = false, ox = 0, oy = 0;
   el.addEventListener('mousedown', e => {
     if (e.target === del) return;
-    dragging = true;
+    dragging = true; moved = false;
     const r = document.getElementById('map-wrap').getBoundingClientRect();
     ox = e.clientX - r.left - item.x; oy = e.clientY - r.top - item.y;
     e.preventDefault();
   });
   window.addEventListener('mousemove', e => {
     if (!dragging) return;
+    moved = true;
     const r = document.getElementById('map-wrap').getBoundingClientRect();
     item.x = e.clientX - r.left - ox; item.y = e.clientY - r.top - oy;
     el.style.left = item.x+'px'; el.style.top = item.y+'px';
-    const ll = lmap.layerPointToLatLng(L.point(item.x, item.y));
+    const layerPt = lmap.containerPointToLayerPoint(L.point(item.x, item.y));
+    const ll = lmap.layerPointToLatLng(layerPt);
     item.lat = ll.lat; item.lng = ll.lng;
   });
-  window.addEventListener('mouseup', () => { dragging = false; });
+  window.addEventListener('mouseup', e => {
+    if (dragging && !moved && e.target !== del) {
+      // ドラッグ してない → クリク → へんしゅう モーダル ひらく
+      openTextModal(item);
+    }
+    dragging = false;
+  });
   overlay.appendChild(el);
 }
 
@@ -1346,8 +1433,9 @@ function updateTextPositions() {
   textItems.forEach(item => {
     const el = document.getElementById('txt-'+item.id);
     if (!el) return;
-    const pt = lmap.latLngToLayerPoint(L.latLng(item.lat, item.lng));
-    item.x = pt.x; item.y = pt.y;
+    const layerPt = lmap.latLngToLayerPoint(L.latLng(item.lat, item.lng));
+    const containerPt = lmap.layerPointToContainerPoint(layerPt);
+    item.x = containerPt.x; item.y = containerPt.y;
     el.style.left = item.x+'px'; el.style.top = item.y+'px';
   });
 }
@@ -1454,6 +1542,16 @@ function clearAll() {
   paintMap.clear();
   textItems = []; document.getElementById('text-overlay').innerHTML = '';
   gPoly.selectAll('path').attr('fill', landColor);
+  // じどう いろかえ モード リセト
+  autoColorEnabled = false;
+  autoColorIndex = 0;
+  autoColorSlots = ['#e05030', '#2080c0', '#60a840', '#d4b020'];
+  document.getElementById('auto-color-toggle').checked = false;
+  const detail = document.getElementById('auto-color-detail');
+  detail.style.opacity = '0.4';
+  detail.style.pointerEvents = 'none';
+  renderAutoSlots();
+  setCurrentColor('#e05030');
   updateSidebar(); updateStats();
   toast('クリアしたヨ！');
 }
