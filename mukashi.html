@@ -129,6 +129,69 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
 .auto-indicator { display: flex; gap: 3px; margin-top: 5px; }
 .auto-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--border); transition: background .2s; }
 .auto-dot.current { background: var(--accent); }
+
+/* ===================== レイヤ UI ===================== */
+.layer-list { display: flex; flex-direction: column; gap: 6px; padding: 10px 14px; }
+.layer-card {
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  overflow: hidden;
+  transition: border-color .15s, box-shadow .15s;
+}
+.layer-card.active-layer {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(112,64,160,0.15);
+  background: #fff;
+}
+.layer-card.hidden-layer { opacity: 0.5; }
+.layer-header {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+.layer-radio {
+  width: 14px; height: 14px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0;
+}
+.layer-name {
+  flex: 1; font-size: 11px; font-weight: 700; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.layer-active-badge {
+  font-size: 9px; background: var(--accent); color: white;
+  padding: 1px 5px; border-radius: 8px; white-space: nowrap;
+}
+.layer-btn {
+  width: 22px; height: 22px; border-radius: 4px; border: 1px solid var(--border);
+  background: transparent; cursor: pointer; display: flex; align-items: center;
+  justify-content: center; font-size: 13px; transition: all .12s; flex-shrink: 0;
+  color: var(--text);
+}
+.layer-btn:hover { border-color: var(--accent2); background: rgba(112,64,160,0.08); }
+.layer-btn.vis-off { opacity: 0.4; }
+.layer-body { padding: 0 8px 8px; border-top: 1px solid var(--border); display: none; }
+.layer-card.active-layer .layer-body { display: block; }
+.layer-body .sel { font-size: 11px; margin-top: 6px; }
+.layer-body .pref-tags { margin-top: 4px; }
+.layer-opacity-row { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
+.layer-opacity-row .slider-label { min-width: 44px; font-size: 10px; }
+.add-layer-btn {
+  margin: 0 14px 10px;
+  padding: 6px;
+  border-radius: 6px;
+  border: 1.5px dashed var(--border);
+  background: transparent;
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--muted);
+  width: calc(100% - 28px);
+  transition: all .12s;
+  font-family: inherit;
+}
+.add-layer-btn:hover { border-color: var(--accent2); color: var(--accent); }
+/* ===================================================== */
 </style>
 </head>
 <body>
@@ -136,7 +199,7 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
   <button class="hamburger" id="hamburger" onclick="toggleDrawer()"><span></span><span></span><span></span></button>
   <div class="logo">🗺️</div>
   <div>
-    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.5.3</span></div>
+    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.6.0</span></div>
     <div class="subtitle">れきしてき ぎょうせいくいき ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -160,37 +223,18 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
         </select>
       </div>
       <div class="slider-row">
-        <span class="slider-label">ポリゴン</span>
-        <input type="range" min="0" max="100" step="1" value="75" style="flex:1;accent-color:var(--accent);" oninput="setPolyOpacity(this.value)">
-        <span class="slider-val" id="poly-opacity-val">75%</span>
-      </div>
-      <div class="slider-row" style="margin-top:6px;">
         <span class="slider-label">タイル</span>
         <input type="range" min="0" max="100" step="1" value="20" style="flex:1;accent-color:var(--accent);" oninput="setTileOpacity(this.value)">
         <span class="slider-val" id="tile-opacity-val">20%</span>
       </div>
     </div>
 
-    <!-- じだいえらび -->
-    <div class="sec">
-      <div class="sec-h">じだい えらび</div>
-      <select class="sel" id="era-sel" onchange="changeEra(this.value)">
-        <option value="bakumatsu">幕末（江戸末期）国郡境</option>
-        <option value="1920" selected>1920年（大正9年）昭和大合併まえ</option>
-        <option value="1950">1950年（昭和25年）</option>
-        <option value="2000">2000年（平成12年）※じゅんびちゅう</option>
-      </select>
-      <div style="font-size:10px;color:var(--muted);margin-top:6px;line-height:1.6;" id="era-note">データ：国土数値情報（国交省）</div>
+    <!-- レイヤ -->
+    <div class="sec" style="padding-bottom:4px;">
+      <div class="sec-h">レイヤ</div>
     </div>
-
-    <!-- けん せんたく -->
-    <div class="sec">
-      <div class="sec-h">ひょうじ する けん</div>
-      <div style="font-size:11px;color:var(--muted);margin-bottom:6px;">えらんだ けん の ポリゴン を ひょうじ</div>
-      <select class="sel" id="pref-add-sel"><option value="">── けん を えらぶ ──</option></select>
-      <button class="btn" onclick="addPref()" style="margin-top:6px;">＋ ひょうじ に ついか</button>
-      <div class="pref-tags" id="pref-tags"></div>
-    </div>
+    <div id="layer-list" class="layer-list"></div>
+    <button class="add-layer-btn" onclick="addLayer()">＋ レイヤ ついか</button>
 
     <!-- ぬり モード -->
     <div class="sec">
@@ -396,11 +440,12 @@ const PRESET_COLORS = [
   '#ffffff','#1a1a1a',
 ];
 let currentColor = '#e05030';
+
 // =====================================================
 // じどう いろかえ モード
 // =====================================================
 let autoColorEnabled = false;
-let autoColorSlots = ['#e05030', '#2080c0', '#60a840', '#d4b020']; // デフォルト 4いろ
+let autoColorSlots = ['#e05030', '#2080c0', '#60a840', '#d4b020'];
 let autoColorIndex = 0;
 
 function toggleAutoColor(on) {
@@ -408,51 +453,38 @@ function toggleAutoColor(on) {
   const detail = document.getElementById('auto-color-detail');
   detail.style.opacity = on ? '1' : '0.4';
   detail.style.pointerEvents = on ? 'auto' : 'none';
-  if (on) {
-    autoColorIndex = 0;
-    setCurrentColor(autoColorSlots[0]);
-  }
+  if (on) { autoColorIndex = 0; setCurrentColor(autoColorSlots[0]); }
   renderAutoSlots();
 }
 
 function renderAutoSlots() {
   const wrap = document.getElementById('auto-color-slots');
   const ind  = document.getElementById('auto-indicator');
-  wrap.innerHTML = '';
-  ind.innerHTML  = '';
-
+  wrap.innerHTML = ''; ind.innerHTML = '';
   autoColorSlots.forEach((c, i) => {
     const slot = document.createElement('div');
     slot.className = 'auto-slot' + (i === autoColorIndex ? ' current' : '');
-    slot.style.background = c;
-    slot.title = c;
-    // クリクで いろ かえる
+    slot.style.background = c; slot.title = c;
     slot.onclick = (e) => {
       e.stopPropagation();
-      const idx2 = i; // クロジャ
+      const idx2 = i;
       openColorPopupFromEl(slot, c, nc => {
         autoColorSlots[idx2] = nc;
         if (autoColorEnabled && idx2 === autoColorIndex) setCurrentColor(nc);
         renderAutoSlots();
       });
     };
-    // ×ボタン（2こ いじょう あるとき だけ）
     if (autoColorSlots.length > 2) {
       const del = document.createElement('div');
-      del.className = 'auto-slot-del';
-      del.textContent = '×';
+      del.className = 'auto-slot-del'; del.textContent = '×';
       del.onclick = e => { e.stopPropagation(); removeAutoSlot(i); };
       slot.appendChild(del);
     }
     wrap.appendChild(slot);
-
-    // インジケタ ドット
     const dot = document.createElement('div');
     dot.className = 'auto-dot' + (i === autoColorIndex ? ' current' : '');
     ind.appendChild(dot);
   });
-
-  // けすステップ の インジケタ ドット（🗑）
   const eraseDot = document.createElement('div');
   eraseDot.className = 'auto-dot' + (autoColorIndex >= autoColorSlots.length ? ' current' : '');
   eraseDot.style.cssText = 'font-size:8px;width:auto;height:auto;background:none;display:flex;align-items:center;';
@@ -460,54 +492,36 @@ function renderAutoSlots() {
   ind.appendChild(eraseDot);
   if (autoColorSlots.length < 5) {
     const add = document.createElement('button');
-    add.className = 'auto-add-btn';
-    add.textContent = '+';
-    add.title = 'いろ ついか';
+    add.className = 'auto-add-btn'; add.textContent = '+'; add.title = 'いろ ついか';
     add.onclick = () => addAutoSlot();
     wrap.appendChild(add);
   }
 }
 
 function addAutoSlot() {
-  // いまの さいご の いろ から すこし ずらした いろ を ついか
-  const last = autoColorSlots[autoColorSlots.length - 1];
-  // 色相 を 60度 ずらす
-  const shifted = shiftHue(last, 60);
-  autoColorSlots.push(shifted);
+  autoColorSlots.push(shiftHue(autoColorSlots[autoColorSlots.length - 1], 60));
   renderAutoSlots();
 }
-
 function removeAutoSlot(i) {
   autoColorSlots.splice(i, 1);
   if (autoColorIndex >= autoColorSlots.length) autoColorIndex = 0;
   if (autoColorEnabled) setCurrentColor(autoColorSlots[autoColorIndex]);
   renderAutoSlots();
 }
-
 function advanceAutoColor() {
   if (!autoColorEnabled) return;
-  // さいご の つぎ は けすステップ（null）、そのつぎ は さいしょに もどる
-  // autoColorIndex === autoColorSlots.length の とき が「けす」ステップ
   autoColorIndex = (autoColorIndex + 1) % (autoColorSlots.length + 1);
-  if (autoColorIndex < autoColorSlots.length) {
-    setCurrentColor(autoColorSlots[autoColorIndex]);
-  }
-  // けすステップ の とき は currentColor は かえない（クリク ハンドラ で はんてい する）
+  if (autoColorIndex < autoColorSlots.length) setCurrentColor(autoColorSlots[autoColorIndex]);
   renderAutoSlots();
 }
 
-// DOM ようそ を アンカ に つかう バジョン（auto-slot よう）
 function openColorPopupFromEl(anchorEl, currentVal, callback) {
   const existing = document.getElementById('cp-popup-global');
   if (existing) existing.remove();
-
   cpCallback = callback;
   const popup = document.createElement('div');
-  popup.id = 'cp-popup-global';
-  popup.className = 'cp-popup open';
-
-  const pal = document.createElement('div');
-  pal.className = 'cp-palette';
+  popup.id = 'cp-popup-global'; popup.className = 'cp-popup open';
+  const pal = document.createElement('div'); pal.className = 'cp-palette';
   PRESET_COLORS.forEach(c => {
     const sw = document.createElement('div');
     sw.className = 'cp-swatch' + (c === currentVal ? ' active' : '');
@@ -516,44 +530,24 @@ function openColorPopupFromEl(anchorEl, currentVal, callback) {
     pal.appendChild(sw);
   });
   popup.appendChild(pal);
-
-  const row = document.createElement('div');
-  row.className = 'cp-input-row';
-  const prev = document.createElement('div');
-  prev.className = 'cp-preview-small';
-  prev.style.background = currentVal;
-  const inp = document.createElement('input');
-  inp.type = 'text'; inp.value = currentVal; inp.placeholder = '#rrggbb';
-  inp.oninput = () => {
-    const v = inp.value.trim();
-    if (/^#[0-9a-fA-F]{6}$/.test(v)) { prev.style.background = v; cpCallback(v); }
-  };
+  const row = document.createElement('div'); row.className = 'cp-input-row';
+  const prev = document.createElement('div'); prev.className = 'cp-preview-small'; prev.style.background = currentVal;
+  const inp = document.createElement('input'); inp.type = 'text'; inp.value = currentVal; inp.placeholder = '#rrggbb';
+  inp.oninput = () => { const v = inp.value.trim(); if (/^#[0-9a-fA-F]{6}$/.test(v)) { prev.style.background = v; cpCallback(v); } };
   inp.onkeydown = e => { if (e.key === 'Enter') popup.remove(); };
-  row.appendChild(prev); row.appendChild(inp);
-  popup.appendChild(row);
-
+  row.appendChild(prev); row.appendChild(inp); popup.appendChild(row);
   document.body.appendChild(popup);
   const rect = anchorEl.getBoundingClientRect();
-  popup.style.position = 'fixed';
-  popup.style.top = (rect.bottom + 4) + 'px';
-  popup.style.left = rect.left + 'px';
-  popup.style.zIndex = 9999;
-
+  popup.style.cssText = `position:fixed;top:${rect.bottom+4}px;left:${rect.left}px;z-index:9999;`;
   setTimeout(() => {
     document.addEventListener('click', function handler(e) {
-      if (!popup.contains(e.target) && e.target !== anchorEl) {
-        popup.remove();
-        document.removeEventListener('click', handler);
-      }
+      if (!popup.contains(e.target) && e.target !== anchorEl) { popup.remove(); document.removeEventListener('click', handler); }
     });
   }, 0);
 }
 
-// 色相 を ずらす ユティリティ
 function shiftHue(hex, deg) {
-  let r = parseInt(hex.slice(1,3),16)/255;
-  let g = parseInt(hex.slice(3,5),16)/255;
-  let b = parseInt(hex.slice(5,7),16)/255;
+  let r = parseInt(hex.slice(1,3),16)/255, g = parseInt(hex.slice(3,5),16)/255, b = parseInt(hex.slice(5,7),16)/255;
   const max = Math.max(r,g,b), min = Math.min(r,g,b), d = max - min;
   let h = 0, s = max === 0 ? 0 : d/max, v = max;
   if (d > 0) {
@@ -563,18 +557,17 @@ function shiftHue(hex, deg) {
     h *= 60;
   }
   h = (h + deg) % 360;
-  const c = v * s, x = c * (1 - Math.abs((h/60)%2 - 1)), m = v - c;
+  const c2 = v*s, x = c2*(1-Math.abs((h/60)%2-1)), m = v-c2;
   let rr,gg,bb;
-  if      (h < 60)  { rr=c;  gg=x;  bb=0;  }
-  else if (h < 120) { rr=x;  gg=c;  bb=0;  }
-  else if (h < 180) { rr=0;  gg=c;  bb=x;  }
-  else if (h < 240) { rr=0;  gg=x;  bb=c;  }
-  else if (h < 300) { rr=x;  gg=0;  bb=c;  }
-  else              { rr=c;  gg=0;  bb=x;  }
+  if      (h<60)  {rr=c2;gg=x;bb=0;}
+  else if (h<120) {rr=x;gg=c2;bb=0;}
+  else if (h<180) {rr=0;gg=c2;bb=x;}
+  else if (h<240) {rr=0;gg=x;bb=c2;}
+  else if (h<300) {rr=x;gg=0;bb=c2;}
+  else            {rr=c2;gg=0;bb=x;}
   const toHex = n => Math.round((n+m)*255).toString(16).padStart(2,'0');
-  return '#' + toHex(rr) + toHex(gg) + toHex(bb);
+  return '#'+toHex(rr)+toHex(gg)+toHex(bb);
 }
-
 
 function initPalette() {
   const pal = document.getElementById('palette');
@@ -601,13 +594,9 @@ function setCurrentColor(c) {
 let eyedropperMode = false;
 function toggleEyedropper() {
   eyedropperMode = !eyedropperMode;
-  const btn = document.getElementById('btn-eyedropper');
-  btn.classList.toggle('active', eyedropperMode);
+  document.getElementById('btn-eyedropper').classList.toggle('active', eyedropperMode);
   document.getElementById('map-wrap').style.cursor = eyedropperMode ? 'crosshair' : '';
-  if (eyedropperMode) {
-    // ほかの モード は OFF に する
-    if (textMode) toggleTextMode();
-  }
+  if (eyedropperMode && textMode) toggleTextMode();
 }
 
 // =====================================================
@@ -616,77 +605,345 @@ function toggleEyedropper() {
 let cpCallback = null;
 
 function openColorPopup(anchorId, currentVal, callback) {
-  // すでに ひらいてたら とじる
   const existing = document.getElementById('cp-popup-global');
   if (existing) existing.remove();
-
   cpCallback = callback;
   const anchor = document.getElementById(anchorId);
   const popup = document.createElement('div');
-  popup.id = 'cp-popup-global';
-  popup.className = 'cp-popup open';
-
-  // パレット
-  const pal = document.createElement('div');
-  pal.className = 'cp-palette';
+  popup.id = 'cp-popup-global'; popup.className = 'cp-popup open';
+  const pal = document.createElement('div'); pal.className = 'cp-palette';
   PRESET_COLORS.forEach(c => {
     const sw = document.createElement('div');
     sw.className = 'cp-swatch' + (c === currentVal ? ' active' : '');
     sw.style.background = c;
-    sw.onclick = () => {
-      cpCallback(c);
-      popup.remove();
-    };
+    sw.onclick = () => { cpCallback(c); popup.remove(); };
     pal.appendChild(sw);
   });
   popup.appendChild(pal);
-
-  // すうち にゅうりょく
-  const row = document.createElement('div');
-  row.className = 'cp-input-row';
-  const prev = document.createElement('div');
-  prev.className = 'cp-preview-small';
-  prev.style.background = currentVal;
-  const inp = document.createElement('input');
-  inp.type = 'text';
-  inp.value = currentVal;
-  inp.placeholder = '#rrggbb';
-  inp.oninput = () => {
-    const v = inp.value.trim();
-    if (/^#[0-9a-fA-F]{6}$/.test(v)) {
-      prev.style.background = v;
-      cpCallback(v);
-    }
-  };
+  const row = document.createElement('div'); row.className = 'cp-input-row';
+  const prev = document.createElement('div'); prev.className = 'cp-preview-small'; prev.style.background = currentVal;
+  const inp = document.createElement('input'); inp.type = 'text'; inp.value = currentVal; inp.placeholder = '#rrggbb';
+  inp.oninput = () => { const v = inp.value.trim(); if (/^#[0-9a-fA-F]{6}$/.test(v)) { prev.style.background = v; cpCallback(v); } };
   inp.onkeydown = e => { if (e.key === 'Enter') popup.remove(); };
-  row.appendChild(prev);
-  row.appendChild(inp);
-  popup.appendChild(row);
-
-  // body に いれて、アンカの いちに あわせる（overflow:hidden の えいきょう うけない）
+  row.appendChild(prev); row.appendChild(inp); popup.appendChild(row);
   document.body.appendChild(popup);
   const rect = anchor.getBoundingClientRect();
-  popup.style.position = 'fixed';
-  popup.style.top = (rect.bottom + 4) + 'px';
-  popup.style.left = rect.left + 'px';
-  popup.style.zIndex = 9999;
-
-  // そと クリク で とじる
+  popup.style.cssText = `position:fixed;top:${rect.bottom+4}px;left:${rect.left}px;z-index:9999;`;
   setTimeout(() => {
     document.addEventListener('click', function handler(e) {
-      if (!popup.contains(e.target) && e.target !== anchor) {
-        popup.remove();
-        document.removeEventListener('click', handler);
-      }
+      if (!popup.contains(e.target) && e.target !== anchor) { popup.remove(); document.removeEventListener('click', handler); }
     });
   }, 0);
 }
 
+// =====================================================
+// =====================================================
+// レイヤ システム
+// =====================================================
+// =====================================================
+
+let layerCounter = 0;
+let activeLayerId = null;
+
+// レイヤ オブジェクト の こうぞ：
+// {
+//   id: 'layer-1',
+//   name: 'レイヤ 1',
+//   era: '1920',
+//   activePrefs: [],
+//   paintMap: Map,
+//   features: [],
+//   prefTopoData: [],
+//   visible: true,
+//   opacity: 75,
+//   // D3 グルプ
+//   gPoly: d3selection,
+//   gBorder: d3selection,
+//   gLabels: d3selection,
+// }
+let layers = [];
+
+function createLayerObj(name, era) {
+  layerCounter++;
+  return {
+    id: 'layer-' + layerCounter,
+    name: name || ('レイヤ ' + layerCounter),
+    era: era || '1920',
+    activePrefs: [],
+    paintMap: new Map(),
+    features: [],
+    prefTopoData: [],
+    visible: true,
+    opacity: 75,
+    gPoly: null,
+    gBorder: null,
+    gLabels: null,
+  };
+}
+
+function getActiveLayer() {
+  return layers.find(l => l.id === activeLayerId) || null;
+}
+
+// SVG に グルプ を ついか する（したから じゅんに かさなる）
+function attachLayerGroups(layer) {
+  // ぜんレイヤの SVG グルプを さいこうちく（じゅんばん どおりに かさねる）
+  rebuildSvgGroups();
+}
+
+function rebuildSvgGroups() {
+  // ぜんぶ の g-layer を さくじょして つくりなおす
+  svgOverlay.selectAll('.g-layer-wrap').remove();
+  layers.forEach(layer => {
+    const wrap = svgOverlay.append('g').attr('class', 'g-layer-wrap').attr('data-lid', layer.id);
+    layer.gPoly   = wrap.append('g').attr('class', 'g-poly');
+    layer.gBorder = wrap.append('g').attr('class', 'g-border');
+    layer.gLabels = wrap.append('g').attr('class', 'g-labels').style('display', 'none');
+    // みえかた
+    wrap.style('opacity', layer.visible ? layer.opacity / 100 : 0);
+    // ポインタイベント：アクティブレイヤだけ ON
+    wrap.style('pointer-events', layer.id === activeLayerId ? 'all' : 'none');
+  });
+  // テキストオバレイ は いちばんうえ（DOM の ふつのし）
+}
+
+function setActiveLayer(id) {
+  activeLayerId = id;
+  // ポインタイベント きりかえ
+  layers.forEach(layer => {
+    const wrap = svgOverlay.select(`.g-layer-wrap[data-lid="${layer.id}"]`);
+    if (!wrap.empty()) {
+      wrap.style('pointer-events', layer.id === id ? 'all' : 'none');
+    }
+  });
+  renderLayerList();
+  // アクティブレイヤの currentEra に あわせて ぬりモド ボタン こうしん
+  const al = getActiveLayer();
+  if (al) updateKuniButton(al.era);
+  updateStats();
+}
+
+function addLayer() {
+  if (layers.length >= 4) { toast('レイヤは さいだい 4まいまでデスヨ'); return; }
+  const layer = createLayerObj('レイヤ ' + (layers.length + 1), '1920');
+  layers.push(layer);
+  rebuildSvgGroups();
+  setActiveLayer(layer.id);
+  renderLayerList();
+  toast(layer.name + ' ついかしたヨ！');
+}
+
+function removeLayer(id) {
+  if (layers.length <= 1) { toast('レイヤは 1まい いじょう ひつようデスヨ'); return; }
+  if (!confirm('このレイヤを さくじょ しますか？')) return;
+  layers = layers.filter(l => l.id !== id);
+  if (activeLayerId === id) setActiveLayer(layers[layers.length - 1].id);
+  rebuildSvgGroups();
+  // 残ったレイヤを すべて かきなおす
+  layers.forEach(l => { if (l.features.length) rebuildLayerMap(l); });
+  renderLayerList();
+  updateStats();
+  toast('レイヤ さくじょしたヨ');
+}
+
+function moveLayerUp(id) {
+  const i = layers.findIndex(l => l.id === id);
+  if (i <= 0) return;
+  [layers[i-1], layers[i]] = [layers[i], layers[i-1]];
+  rebuildSvgGroups();
+  layers.forEach(l => { if (l.features.length) rebuildLayerMap(l); });
+  renderLayerList();
+}
+
+function moveLayerDown(id) {
+  const i = layers.findIndex(l => l.id === id);
+  if (i < 0 || i >= layers.length - 1) return;
+  [layers[i], layers[i+1]] = [layers[i+1], layers[i]];
+  rebuildSvgGroups();
+  layers.forEach(l => { if (l.features.length) rebuildLayerMap(l); });
+  renderLayerList();
+}
+
+function toggleLayerVisible(id) {
+  const layer = layers.find(l => l.id === id);
+  if (!layer) return;
+  layer.visible = !layer.visible;
+  const wrap = svgOverlay.select(`.g-layer-wrap[data-lid="${id}"]`);
+  if (!wrap.empty()) wrap.style('opacity', layer.visible ? layer.opacity / 100 : 0);
+  renderLayerList();
+}
+
+function setLayerOpacity(id, val) {
+  const layer = layers.find(l => l.id === id);
+  if (!layer) return;
+  layer.opacity = parseFloat(val);
+  if (layer.visible) {
+    const wrap = svgOverlay.select(`.g-layer-wrap[data-lid="${id}"]`);
+    if (!wrap.empty()) wrap.style('opacity', layer.opacity / 100);
+  }
+}
+
+function setLayerEra(id, era) {
+  const layer = layers.find(l => l.id === id);
+  if (!layer) return;
+  layer.era = era;
+  layer.activePrefs = [];
+  layer.paintMap.clear();
+  layer.features = [];
+  layer.prefTopoData = [];
+  layer.gPoly && layer.gPoly.selectAll('path').remove();
+  layer.gBorder && layer.gBorder.selectAll('path').remove();
+  renderLayerList();
+  updateKuniButton(era);
+  updateStats();
+  const noteEl = document.getElementById('era-note-' + id);
+  if (noteEl) noteEl.textContent = era === 'bakumatsu' ? 'データ：幕末明治地勢地図境界データ（人間文化研究機構）CC BY-NC' : 'データ：国土数値情報（国交省）';
+}
+
+// レイヤ UI こうちく
+function renderLayerList() {
+  const el = document.getElementById('layer-list');
+  el.innerHTML = '';
+  layers.slice().reverse().forEach((layer, revIdx) => {
+    const realIdx = layers.length - 1 - revIdx;
+    const card = document.createElement('div');
+    card.className = 'layer-card' + (layer.id === activeLayerId ? ' active-layer' : '') + (!layer.visible ? ' hidden-layer' : '');
+
+    // ヘッダ
+    const hdr = document.createElement('div');
+    hdr.className = 'layer-header';
+
+    const radio = document.createElement('input');
+    radio.type = 'radio'; radio.name = 'active-layer'; radio.className = 'layer-radio';
+    radio.checked = (layer.id === activeLayerId);
+    radio.onchange = () => setActiveLayer(layer.id);
+
+    const nameEl = document.createElement('span');
+    nameEl.className = 'layer-name'; nameEl.textContent = layer.name;
+
+    if (layer.id === activeLayerId) {
+      const badge = document.createElement('span');
+      badge.className = 'layer-active-badge'; badge.textContent = '編集中';
+      hdr.appendChild(radio); hdr.appendChild(nameEl); hdr.appendChild(badge);
+    } else {
+      hdr.appendChild(radio); hdr.appendChild(nameEl);
+    }
+
+    // 👀 ボタン
+    const visBtn = document.createElement('button');
+    visBtn.className = 'layer-btn' + (layer.visible ? '' : ' vis-off');
+    visBtn.title = layer.visible ? 'かくす' : 'みせる';
+    visBtn.textContent = '👀';
+    visBtn.onclick = e => { e.stopPropagation(); toggleLayerVisible(layer.id); };
+    hdr.appendChild(visBtn);
+
+    // ↑ ボタン
+    const upBtn = document.createElement('button');
+    upBtn.className = 'layer-btn'; upBtn.textContent = '↑'; upBtn.title = 'うえに いどう';
+    upBtn.disabled = (realIdx === layers.length - 1);
+    upBtn.onclick = e => { e.stopPropagation(); moveLayerUp(layer.id); };
+    hdr.appendChild(upBtn);
+
+    // ↓ ボタン
+    const dnBtn = document.createElement('button');
+    dnBtn.className = 'layer-btn'; dnBtn.textContent = '↓'; dnBtn.title = 'したに いどう';
+    dnBtn.disabled = (realIdx === 0);
+    dnBtn.onclick = e => { e.stopPropagation(); moveLayerDown(layer.id); };
+    hdr.appendChild(dnBtn);
+
+    // × ボタン
+    if (layers.length > 1) {
+      const delBtn = document.createElement('button');
+      delBtn.className = 'layer-btn'; delBtn.textContent = '×'; delBtn.title = 'さくじょ';
+      delBtn.style.color = '#c03030';
+      delBtn.onclick = e => { e.stopPropagation(); removeLayer(layer.id); };
+      hdr.appendChild(delBtn);
+    }
+
+    card.appendChild(hdr);
+
+    // ボディ（アクティブレイヤだけ ひらく）
+    const body = document.createElement('div');
+    body.className = 'layer-body';
+
+    // じだい えらび
+    const eraNote = document.createElement('div');
+    eraNote.id = 'era-note-' + layer.id;
+    eraNote.style.cssText = 'font-size:10px;color:var(--muted);margin-top:4px;line-height:1.6;';
+    eraNote.textContent = layer.era === 'bakumatsu' ? 'データ：幕末明治地勢地図境界データ（人間文化研究機構）CC BY-NC' : 'データ：国土数値情報（国交省）';
+
+    const eraSel = document.createElement('select');
+    eraSel.className = 'sel';
+    [
+      {v:'bakumatsu', t:'幕末（江戸末期）国郡境'},
+      {v:'1920', t:'1920年（大正9年）'},
+      {v:'1950', t:'1950年（昭和25年）'},
+      {v:'2000', t:'2000年（平成12年）※じゅんびちゅう'},
+    ].forEach(({v,t}) => {
+      const o = document.createElement('option');
+      o.value = v; o.textContent = t;
+      if (v === layer.era) o.selected = true;
+      eraSel.appendChild(o);
+    });
+    eraSel.onchange = () => setLayerEra(layer.id, eraSel.value);
+    body.appendChild(eraSel);
+    body.appendChild(eraNote);
+
+    // けん えらび
+    const prefLabel = document.createElement('div');
+    prefLabel.style.cssText = 'font-size:10px;color:var(--muted);margin-top:8px;margin-bottom:4px;';
+    prefLabel.textContent = 'ひょうじ する けん';
+    body.appendChild(prefLabel);
+
+    const prefRow = document.createElement('div');
+    prefRow.style.cssText = 'display:flex;gap:4px;';
+    const prefSel = document.createElement('select');
+    prefSel.className = 'sel'; prefSel.style.flex = '1';
+    prefSel.id = 'pref-sel-' + layer.id;
+    const defOpt = document.createElement('option'); defOpt.value = ''; defOpt.textContent = '── えらぶ ──';
+    prefSel.appendChild(defOpt);
+    PREFS.forEach(p => { const o = document.createElement('option'); o.value = p; o.textContent = p; prefSel.appendChild(o); });
+
+    const addPrefBtn = document.createElement('button');
+    addPrefBtn.className = 'btn'; addPrefBtn.style.cssText = 'margin-top:0;width:auto;padding:4px 8px;flex-shrink:0;';
+    addPrefBtn.textContent = '＋';
+    addPrefBtn.onclick = () => addPrefToLayer(layer.id, prefSel.value);
+
+    prefRow.appendChild(prefSel); prefRow.appendChild(addPrefBtn);
+    body.appendChild(prefRow);
+
+    const tagsEl = document.createElement('div');
+    tagsEl.className = 'pref-tags'; tagsEl.id = 'pref-tags-' + layer.id;
+    layer.activePrefs.forEach(pref => {
+      const tag = document.createElement('div');
+      tag.className = 'pref-tag active';
+      tag.textContent = pref + ' ✕';
+      tag.onclick = () => removePrefFromLayer(layer.id, pref);
+      tagsEl.appendChild(tag);
+    });
+    body.appendChild(tagsEl);
+
+    // とうかどスライダ
+    const opRow = document.createElement('div');
+    opRow.className = 'layer-opacity-row';
+    const opLabel = document.createElement('span'); opLabel.className = 'slider-label'; opLabel.textContent = 'とうかど';
+    const opSlider = document.createElement('input');
+    opSlider.type = 'range'; opSlider.min = 0; opSlider.max = 100; opSlider.step = 1; opSlider.value = layer.opacity;
+    opSlider.style.cssText = 'flex:1;accent-color:var(--accent);';
+    const opVal = document.createElement('span'); opVal.className = 'slider-val'; opVal.textContent = layer.opacity + '%';
+    opSlider.oninput = () => { opVal.textContent = opSlider.value + '%'; setLayerOpacity(layer.id, opSlider.value); };
+    opRow.appendChild(opLabel); opRow.appendChild(opSlider); opRow.appendChild(opVal);
+    body.appendChild(opRow);
+
+    card.appendChild(body);
+    el.appendChild(card);
+  });
+}
 
 // =====================================================
-// データ
+// データ（レイヤ対応）
 // =====================================================
-let paintMode = 'single'; // 'single' | 'gun' | 'pref' | 'kuni'
+let paintMode = 'single';
 
 function getUniqueId(f) {
   const p = f.properties || {};
@@ -698,8 +955,8 @@ function getUniqueId(f) {
 }
 
 function setPaintMode(mode) {
-  // 幕末モド じゃない とき は kuni モド は つかえない
-  if (mode === 'kuni' && currentEra !== 'bakumatsu') return;
+  const al = getActiveLayer();
+  if (mode === 'kuni' && al && al.era !== 'bakumatsu') return;
   paintMode = mode;
   document.getElementById('btn-mode-single').classList.toggle('active', mode === 'single');
   document.getElementById('btn-mode-gun').classList.toggle('active', mode === 'gun');
@@ -707,47 +964,36 @@ function setPaintMode(mode) {
   document.getElementById('btn-mode-kuni').classList.toggle('active', mode === 'kuni');
 }
 
-function updateKuniButton() {
+function updateKuniButton(era) {
   const btn = document.getElementById('btn-mode-kuni');
-  if (currentEra === 'bakumatsu') {
-    btn.disabled = false;
-    btn.style.opacity = '1';
-  } else {
-    btn.disabled = true;
-    btn.style.opacity = '0.4';
-    if (paintMode === 'kuni') setPaintMode('single');
-  }
+  const isBaku = era === 'bakumatsu';
+  btn.disabled = !isBaku;
+  btn.style.opacity = isBaku ? '1' : '0.4';
+  if (!isBaku && paintMode === 'kuni') setPaintMode('single');
 }
 
-function getTargetFeatures(d) {
+function getTargetFeatures(d, layer) {
+  const feats = layer.features;
   const p = d.properties || {};
   if (paintMode === 'gun') {
     const gun  = p.gun  || p.N03_003 || '';
     const pref = p.pref || p.N03_001 || '';
     const kuni = p.kuni || '';
     if (!gun) return [d];
-    return features.filter(f => {
+    return feats.filter(f => {
       const fp = f.properties || {};
-      return (fp.gun || fp.N03_003 || '') === gun &&
-             (fp.pref || fp.N03_001 || '') === pref &&
-             (fp.kuni || '') === kuni;
+      return (fp.gun||fp.N03_003||'') === gun && (fp.pref||fp.N03_001||'') === pref && (fp.kuni||'') === kuni;
     });
   }
   if (paintMode === 'pref') {
     const pref = p.pref || p.N03_001 || '';
     if (!pref) return [d];
-    return features.filter(f => {
-      const fp = f.properties || {};
-      return (fp.pref || fp.N03_001 || '') === pref;
-    });
+    return feats.filter(f => (f.properties?.pref||f.properties?.N03_001||'') === pref);
   }
   if (paintMode === 'kuni') {
     const kuni = p.kuni || '';
     if (!kuni) return [d];
-    return features.filter(f => {
-      const fp = f.properties || {};
-      return (fp.kuni || '') === kuni;
-    });
+    return feats.filter(f => (f.properties?.kuni||'') === kuni);
   }
   return [d];
 }
@@ -767,51 +1013,39 @@ const TILE_ATTRS = {
 function changeTile(key) {
   if (tileLayer) lmap.removeLayer(tileLayer);
   const opacity = parseFloat(document.getElementById('tile-opacity-val').textContent) / 100;
-  tileLayer = L.tileLayer(TILE_URLS[key], {
-    attribution: TILE_ATTRS[key],
-    maxZoom: 18,
-    opacity,
-  }).addTo(lmap);
+  tileLayer = L.tileLayer(TILE_URLS[key], { attribution: TILE_ATTRS[key], maxZoom: 18, opacity }).addTo(lmap);
 }
 
-
-let paintMap = new Map();
-let features = [];
-let currentEra = '1920';
-let activePrefs = [];
 let borderMuniColor = '#b09080', borderMuniWidth = 0.4, borderMuniDash = 'none';
 let showLabel = false, labelSize = 8.0, labelColor = 'rgba(40,32,20,0.8)';
 let landColor = '#dcd2c8', seaColor = '#c8d8e8';
 
-function setBorderMuniColor(c) { borderMuniColor = c; document.getElementById('borderMuniPreview').style.background = c; redrawBorders(); }
-function setBorderMuniWidth(v) { borderMuniWidth = parseFloat(v); document.getElementById('border-muni-width-val').textContent = v; redrawBorders(); }
-function setBorderMuniDash(v)  { borderMuniDash = v; redrawBorders(); }
+function setBorderMuniColor(c) { borderMuniColor = c; document.getElementById('borderMuniPreview').style.background = c; layers.forEach(l => redrawBorders(l)); }
+function setBorderMuniWidth(v) { borderMuniWidth = parseFloat(v); document.getElementById('border-muni-width-val').textContent = v; layers.forEach(l => redrawBorders(l)); }
+function setBorderMuniDash(v)  { borderMuniDash = v; layers.forEach(l => redrawBorders(l)); }
 function toggleBorder(on) {
   document.getElementById('border-detail').style.opacity = on ? '1' : '0.4';
-  gBorder.style('display', on ? null : 'none');
+  layers.forEach(l => l.gBorder && l.gBorder.style('display', on ? null : 'none'));
 }
 function setLandColor(c) {
   landColor = c;
   document.getElementById('landColorPreview').style.background = c;
-  // ぬってない ぽりごん の いろ こうしん
-  gPoly.selectAll('path').each(function(d) {
-    const uid = getUniqueId(d);
-    if (!paintMap.has(uid)) d3.select(this).attr('fill', landColor);
+  layers.forEach(layer => {
+    layer.gPoly && layer.gPoly.selectAll('path').each(function(d) {
+      if (!layer.paintMap.has(getUniqueId(d))) d3.select(this).attr('fill', landColor);
+    });
   });
 }
 function setSeaColor(c) {
   seaColor = c;
   document.getElementById('seaColorPreview').style.background = c;
-  document.getElementById('leaflet-map').style.background = c;
-  if (tileLayer) tileLayer.getContainer && (tileLayer.getContainer().style.background = c);
-  // leaflet の ちず はいけい も かえる
   document.querySelector('#leaflet-map').style.backgroundColor = c;
 }
 
 // =====================================================
 // Leaflet
 // =====================================================
-let lmap, tileLayer, svgOverlay, gPoly, gBorder, gLabels;
+let lmap, tileLayer, svgOverlay;
 
 function initMap() {
   lmap = L.map('leaflet-map', { center: [36.5, 136.5], zoom: 5, zoomControl: false });
@@ -821,9 +1055,6 @@ function initMap() {
   }).addTo(lmap);
   const svgLayer = L.svg({ padding: 0 }).addTo(lmap);
   svgOverlay = d3.select(svgLayer._container);
-  gPoly   = svgOverlay.append('g').attr('class', 'g-poly');
-  gBorder = svgOverlay.append('g').attr('class', 'g-border');
-  gLabels = svgOverlay.append('g').attr('class', 'g-labels').style('display', 'none');
   lmap.on('zoom move zoomend moveend', updateSvgOverlay);
 }
 
@@ -840,8 +1071,6 @@ function geoPathFn(feature) {
   rings.forEach(poly => {
     poly.forEach(ring => {
       const pts = ring.map(([lng, lat]) => projectPoint(lat, lng));
-      if (!pts.length) return;
-      // NaN チェク：へんな てん は とばす
       const valid = pts.filter(p => isFinite(p[0]) && isFinite(p[1]));
       if (valid.length < 2) return;
       paths += valid.map((p, j) => (j === 0 ? `M${p[0].toFixed(1)},${p[1].toFixed(1)}` : `L${p[0].toFixed(1)},${p[1].toFixed(1)}`)).join('') + 'Z';
@@ -859,25 +1088,26 @@ function getCentroid(f) {
 }
 
 function updateSvgOverlay() {
-  if (!features.length) return;
-  gPoly.selectAll('path').each(function(d) { d3.select(this).attr('d', geoPathFn(d)); });
-  redrawBorders();
-  
-  if (showLabel) updateLabelPositions();
+  layers.forEach(layer => {
+    if (!layer.features.length) return;
+    layer.gPoly && layer.gPoly.selectAll('path').each(function(d) { d3.select(this).attr('d', geoPathFn(d)); });
+    redrawBorders(layer);
+    if (showLabel) updateLabelPositions(layer);
+  });
   updateTextPositions();
 }
 
 // =====================================================
-// ちず えがく
+// ちず えがく（レイヤ対応）
 // =====================================================
-function buildMap() {
-  if (!features.length) return;
-  gPoly.selectAll('path').remove();
-  gPoly.selectAll('path')
-    .data(features)
+function buildMap(layer) {
+  if (!layer || !layer.features.length) return;
+  layer.gPoly.selectAll('path').remove();
+  layer.gPoly.selectAll('path')
+    .data(layer.features)
     .enter().append('path')
     .attr('d', d => geoPathFn(d))
-    .attr('fill', d => paintMap.get(getUniqueId(d)) || landColor)
+    .attr('fill', d => layer.paintMap.get(getUniqueId(d)) || landColor)
     .attr('stroke', 'none')
     .style('cursor', 'pointer')
     .on('mouseover', function(ev, d) {
@@ -887,9 +1117,8 @@ function buildMap() {
       const name = getName(d);
       const pref = getPref(d);
       const kuni = p.kuni || '';
-      const color = paintMap.get(uid);
+      const color = layer.paintMap.get(uid);
       const kuniStr = kuni ? ` [${kuni}]` : '';
-      // 幕末 は gun === city なので name を 2かい だしない
       const nameStr = (name && name !== gun) ? ' ' + name : '';
       const infoText = `${pref}${kuniStr}${gun ? ' ' + gun : ''}${nameStr}`;
       showTip(ev, `${infoText}${color ? ' (' + color + ')' : ''}`);
@@ -900,63 +1129,63 @@ function buildMap() {
     .on('click', function(ev, d) {
       if (textMode || rectMode) return;
       if (ev && ev.stopPropagation) ev.stopPropagation();
+      // アクティブレイヤ かくにん
+      const al = getActiveLayer();
+      if (!al || al.id !== layer.id) return;
 
-      // スポイト モード
       if (eyedropperMode) {
         const uid = getUniqueId(d);
-        const col = paintMap.get(uid);
-        if (col) {
-          setCurrentColor(col);
-          toast('いろ すいとたヨ！ ' + col);
-        }
-        // いっかい で OFF
+        const col = layer.paintMap.get(uid);
+        if (col) { setCurrentColor(col); toast('いろ すいとたヨ！ ' + col); }
         eyedropperMode = false;
         document.getElementById('btn-eyedropper').classList.remove('active');
         document.getElementById('map-wrap').style.cursor = '';
         return;
       }
-      const targets = getTargetFeatures(d);
-      // じどう いろかえ の「けすステップ」かどうか
+      const targets = getTargetFeatures(d, al);
       const isEraseStep = autoColorEnabled && autoColorIndex >= autoColorSlots.length;
       if (isEraseStep) {
-        // けすステップ：ぜんぶ けす
-        targets.forEach(f => { const code = getUniqueId(f); if (code) paintMap.delete(code); });
-        gPoly.selectAll('path').attr('fill', f => paintMap.get(getUniqueId(f)) || landColor);
-        updateSidebar(); updateStats();
-        advanceAutoColor();
+        targets.forEach(f => { const code = getUniqueId(f); if (code) al.paintMap.delete(code); });
+        al.gPoly.selectAll('path').attr('fill', f => al.paintMap.get(getUniqueId(f)) || landColor);
+        updateSidebar(); updateStats(); advanceAutoColor();
         return;
       }
-      // 1かいめ か 2かいめ か はんてい（たいしょ の ぜんぶ が おなじ いろ なら けす）
-      const allSameColor = targets.every(f => paintMap.get(getUniqueId(f)) === currentColor);
+      const allSameColor = targets.every(f => al.paintMap.get(getUniqueId(f)) === currentColor);
       targets.forEach(f => {
         const code = getUniqueId(f);
         if (!code) return;
-        if (allSameColor) {
-          paintMap.delete(code);
-        } else {
-          paintMap.set(code, currentColor);
-        }
+        if (allSameColor) al.paintMap.delete(code);
+        else al.paintMap.set(code, currentColor);
       });
-      // SVG の いろ を いっき に こうしん
-      gPoly.selectAll('path').attr('fill', f => paintMap.get(getUniqueId(f)) || landColor);
-      updateSidebar();
-      updateStats();
-      // じどう いろかえ（ぬたとき だけ すすむ、けしたとき は すすまない）
+      al.gPoly.selectAll('path').attr('fill', f => al.paintMap.get(getUniqueId(f)) || landColor);
+      updateSidebar(); updateStats();
       if (!allSameColor) advanceAutoColor();
     });
-  redrawBorders();
-  
-  if (showLabel) buildLabels();
+  redrawBorders(layer);
+  if (showLabel) buildLabels(layer);
   document.getElementById('loading').style.display = 'none';
 }
 
+function rebuildLayerMap(layer) {
+  layer.features = [];
+  layer.prefTopoData = [];
+  layer.activePrefs.forEach(pref => {
+    const cached = prefCache.get(`${pref}_${layer.era}`);
+    if (!cached) return;
+    layer.features = layer.features.concat(cached.features);
+    if (cached.topo) layer.prefTopoData.push({ topo: cached.topo, objKey: cached.objKey });
+  });
+  buildMap(layer);
+  updateSidebar();
+  updateStats();
+}
+
 // =====================================================
-// さかいせん・そとわく
+// さかいせん
 // =====================================================
-function topoMeshPath() {
-  // ぜんけん の TopoJSON から mesh で さかいせん を とりだす
+function topoMeshPath(layer) {
   const paths = [];
-  prefTopoData.forEach(({ topo, objKey }) => {
+  layer.prefTopoData.forEach(({ topo, objKey }) => {
     try {
       const mesh = topojson.mesh(topo, topo.objects[objKey], (a, b) => a !== b);
       const d = geoPathFnGeo(mesh);
@@ -966,12 +1195,8 @@ function topoMeshPath() {
   return paths.join('');
 }
 
-
-
-// GeoJSON geometry を Leaflet ざひょう に へんかん する パス かんすう
 function geoPathFnGeo(geom) {
   if (!geom) return '';
-  // MultiLineString（mesh の けっか）も ちゃんと えがく
   if (geom.type === 'MultiLineString') {
     let paths = '';
     geom.coordinates.forEach(line => {
@@ -986,23 +1211,19 @@ function geoPathFnGeo(geom) {
     if (pts.length < 2) return '';
     return pts.map((p, j) => (j === 0 ? `M${p[0].toFixed(1)},${p[1].toFixed(1)}` : `L${p[0].toFixed(1)},${p[1].toFixed(1)}`)).join('');
   }
-  // Polygon / MultiPolygon（merge の けっか）
   const feature = geom.type === 'Feature' ? geom : { type: 'Feature', geometry: geom };
   return geoPathFn(feature);
 }
 
-function redrawBorders() {
-  gBorder.selectAll('path').remove();
-  if (borderMuniWidth <= 0 || !features.length) return;
-  // TopoJSON が あれば mesh を つかう（きれいな さかいせん）
+function redrawBorders(layer) {
+  if (!layer || !layer.gBorder) return;
+  layer.gBorder.selectAll('path').remove();
+  if (borderMuniWidth <= 0 || !layer.features.length) return;
   let d = '';
-  if (prefTopoData.length > 0) {
-    d = topoMeshPath();
-  } else {
-    d = features.map(f => geoPathFn(f)).filter(Boolean).join('');
-  }
+  if (layer.prefTopoData.length > 0) d = topoMeshPath(layer);
+  else d = layer.features.map(f => geoPathFn(f)).filter(Boolean).join('');
   if (!d) return;
-  gBorder.append('path')
+  layer.gBorder.append('path')
     .attr('d', d).attr('fill', 'none')
     .attr('stroke', borderMuniColor).attr('stroke-width', borderMuniWidth)
     .attr('stroke-dasharray', borderMuniDash === 'none' ? null : borderMuniDash)
@@ -1010,55 +1231,51 @@ function redrawBorders() {
     .style('pointer-events', 'none');
 }
 
-
 // =====================================================
 // ラベル
 // =====================================================
 function toggleLabel(on) {
   showLabel = on;
   document.getElementById('label-size-row').style.opacity = on ? '1' : '0.4';
-  gLabels.style('display', on ? null : 'none');
-  if (on && !gLabels.selectAll('text').size() && features.length) buildLabels();
+  layers.forEach(l => {
+    l.gLabels && l.gLabels.style('display', on ? null : 'none');
+    if (on && l.gLabels && !l.gLabels.selectAll('text').size() && l.features.length) buildLabels(l);
+  });
 }
 function updateLabelSize(val) {
   labelSize = parseFloat(val);
   document.getElementById('label-size-val').textContent = parseFloat(val).toFixed(2).replace(/\.?0+$/,'');
-  gLabels.selectAll('text').attr('font-size', labelSize);
+  layers.forEach(l => l.gLabels && l.gLabels.selectAll('text').attr('font-size', labelSize));
 }
 function updateLabelColor(val) {
   labelColor = val;
   document.getElementById('labelColorPreview').style.backgroundColor = val;
-  gLabels.selectAll('text').style('fill', val);
+  layers.forEach(l => l.gLabels && l.gLabels.selectAll('text').style('fill', val));
 }
-function buildLabels() {
-  gLabels.selectAll('text').remove();
-  // めんせき が ちいさい ポリゴン（りとう など）は ひょうじ しない
-  const filtered = features.filter(f => {
-    if (!getName(f)) return false; // なまえ なし は のぞく
-    const geom = f.geometry;
-    if (!geom) return false;
+function buildLabels(layer) {
+  if (!layer || !layer.gLabels) return;
+  layer.gLabels.selectAll('text').remove();
+  const filtered = layer.features.filter(f => {
+    if (!getName(f)) return false;
+    const geom = f.geometry; if (!geom) return false;
     let coords = geom.type === 'Polygon' ? geom.coordinates[0] : (geom.coordinates[0] || [[]])[0];
     if (!coords || coords.length < 3) return false;
-    const lngs = coords.map(c => c[0]);
-    const lats = coords.map(c => c[1]);
-    const w = Math.max(...lngs) - Math.min(...lngs);
-    const h = Math.max(...lats) - Math.min(...lats);
-    return w * h > 0.0001;
+    const lngs = coords.map(c => c[0]), lats = coords.map(c => c[1]);
+    return (Math.max(...lngs)-Math.min(...lngs)) * (Math.max(...lats)-Math.min(...lats)) > 0.0001;
   });
-  gLabels.selectAll('text').data(filtered).enter().append('text')
+  layer.gLabels.selectAll('text').data(filtered).enter().append('text')
     .each(function(d) {
       const [lat, lng] = getCentroid(d);
       const pt = lmap.latLngToLayerPoint(L.latLng(lat, lng));
-      d3.select(this)
-        .attr('x', pt.x).attr('y', pt.y)
+      d3.select(this).attr('x', pt.x).attr('y', pt.y)
         .attr('text-anchor', 'middle').attr('dominant-baseline', 'central')
         .attr('pointer-events', 'none').attr('font-size', labelSize)
         .style('font-family', 'Hiragino Kaku Gothic ProN,sans-serif')
         .style('fill', labelColor).text(getName(d));
     });
 }
-function updateLabelPositions() {
-  gLabels.selectAll('text').each(function(d) {
+function updateLabelPositions(layer) {
+  layer.gLabels && layer.gLabels.selectAll('text').each(function(d) {
     const [lat, lng] = getCentroid(d);
     const pt = lmap.latLngToLayerPoint(L.latLng(lat, lng));
     d3.select(this).attr('x', pt.x).attr('y', pt.y);
@@ -1068,74 +1285,54 @@ function updateLabelPositions() {
 // =====================================================
 // とうかど
 // =====================================================
-function setPolyOpacity(v) {
-  document.getElementById('poly-opacity-val').textContent = v + '%';
-  gPoly.style('opacity', v/100);
-}
 function setTileOpacity(v) {
   document.getElementById('tile-opacity-val').textContent = v + '%';
   if (tileLayer) tileLayer.setOpacity(v/100);
 }
 
 // =====================================================
-// けん せんたく
+// けん せんたく（レイヤ対応）
 // =====================================================
 const PREFS = ['北海道','青森県','岩手県','宮城県','秋田県','山形県','福島県','茨城県','栃木県','群馬県','埼玉県','千葉県','東京都','神奈川県','新潟県','富山県','石川県','福井県','山梨県','長野県','岐阜県','静岡県','愛知県','三重県','滋賀県','京都府','大阪府','兵庫県','奈良県','和歌山県','鳥取県','島根県','岡山県','広島県','山口県','徳島県','香川県','愛媛県','高知県','福岡県','佐賀県','長崎県','熊本県','大分県','宮崎県','鹿児島県','沖縄県'];
 const PREF_CODES = {'北海道':'01','青森県':'02','岩手県':'03','宮城県':'04','秋田県':'05','山形県':'06','福島県':'07','茨城県':'08','栃木県':'09','群馬県':'10','埼玉県':'11','千葉県':'12','東京都':'13','神奈川県':'14','新潟県':'15','富山県':'16','石川県':'17','福井県':'18','山梨県':'19','長野県':'20','岐阜県':'21','静岡県':'22','愛知県':'23','三重県':'24','滋賀県':'25','京都府':'26','大阪府':'27','兵庫県':'28','奈良県':'29','和歌山県':'30','鳥取県':'31','島根県':'32','岡山県':'33','広島県':'34','山口県':'35','徳島県':'36','香川県':'37','愛媛県':'38','高知県':'39','福岡県':'40','佐賀県':'41','長崎県':'42','熊本県':'43','大分県':'44','宮崎県':'45','鹿児島県':'46','沖縄県':'47'};
 
 const BASE = 'https://tokyo26-sudo.github.io/nurichizu';
-const prefCache = new Map();
-
-function initPrefSel() {
-  const sel = document.getElementById('pref-add-sel');
-  PREFS.forEach(p => {
-    const o = document.createElement('option');
-    o.value = p; o.textContent = p;
-    sel.appendChild(o);
-  });
-}
+const prefCache = new Map(); // ぜんレイヤ きょうゆ キャッシュ
 
 function getPrefUrl(pref, era) {
-  if (era === 'bakumatsu') {
-    return `${BASE}/data/bakumatsu.topojson`;
-  }
+  if (era === 'bakumatsu') return `${BASE}/data/bakumatsu.topojson`;
   const code = PREF_CODES[pref];
   if (!code) return null;
   return `${BASE}/data/${era}_${code}.topojson`;
 }
 
-async function addPref() {
-  const sel = document.getElementById('pref-add-sel');
-  const pref = sel.value;
+async function addPrefToLayer(layerId, pref) {
+  const layer = layers.find(l => l.id === layerId);
+  if (!layer) return;
   if (!pref) { toast('けん を えらんでネ'); return; }
-  // 幕末モード は けん えらび ふよう
-  if (currentEra === 'bakumatsu') {
+
+  if (layer.era === 'bakumatsu') {
+    if (layer.activePrefs.includes('_bakumatsu')) { toast('幕末データは もう よみこみ ちゅうデスヨ'); return; }
     document.getElementById('loading').style.display = 'flex';
     try {
       await loadPrefData('_bakumatsu', 'bakumatsu');
-      if (!activePrefs.includes('_bakumatsu')) activePrefs.push('_bakumatsu');
-      rebuildFeatures();
-      renderPrefTags();
+      layer.activePrefs.push('_bakumatsu');
+      rebuildLayerMap(layer);
+      renderLayerList();
       toast('幕末データ よみこみ したヨ！');
-    } catch(e) {
-      toast('よみこみ しっぱい…');
-      document.getElementById('loading').style.display = 'none';
-    }
+    } catch(e) { toast('よみこみ しっぱい…'); document.getElementById('loading').style.display = 'none'; }
     return;
   }
-  if (activePrefs.includes(pref)) { toast(`${pref} は もう ひょうじ ちゅう デスヨ`); return; }
+
+  if (layer.activePrefs.includes(pref)) { toast(`${pref} は もう ひょうじ ちゅう デスヨ`); return; }
   document.getElementById('loading').style.display = 'flex';
   try {
-    await loadPrefData(pref, currentEra);
-    activePrefs.push(pref);
-    rebuildFeatures();
-    renderPrefTags();
+    await loadPrefData(pref, layer.era);
+    layer.activePrefs.push(pref);
+    rebuildLayerMap(layer);
+    renderLayerList();
     toast(`${pref} ついか したヨ！`);
-  } catch(e) {
-    console.error('よみこみ エラ:', e);
-    toast(`${pref} の データ よみこみ しっぱい…`);
-    document.getElementById('loading').style.display = 'none';
-  }
+  } catch(e) { console.error(e); toast(`${pref} の データ よみこみ しっぱい…`); document.getElementById('loading').style.display = 'none'; }
 }
 
 async function loadPrefData(pref, era) {
@@ -1155,67 +1352,13 @@ async function loadPrefData(pref, era) {
   }
 }
 
-// topoData を けん ごと に もつ
-let prefTopoData = []; // { topo, objKey } の はいれつ
-
-function rebuildFeatures() {
-  features = [];
-  prefTopoData = [];
-  activePrefs.forEach(pref => {
-    const cached = prefCache.get(`${pref}_${currentEra}`);
-    if (!cached) return;
-    features = features.concat(cached.features);
-    if (cached.topo) prefTopoData.push({ topo: cached.topo, objKey: cached.objKey });
-  });
-  buildMap();
-  updateSidebar();
-  updateStats();
-}
-
-function removePref(pref) {
-  activePrefs = activePrefs.filter(p => p !== pref);
-  rebuildFeatures();
-  renderPrefTags();
+function removePrefFromLayer(layerId, pref) {
+  const layer = layers.find(l => l.id === layerId);
+  if (!layer) return;
+  layer.activePrefs = layer.activePrefs.filter(p => p !== pref);
+  rebuildLayerMap(layer);
+  renderLayerList();
   toast(`${pref} を はずしたヨ`);
-}
-
-function renderPrefTags() {
-  const el = document.getElementById('pref-tags');
-  el.innerHTML = '';
-  activePrefs.forEach(pref => {
-    const tag = document.createElement('div');
-    tag.className = 'pref-tag active';
-    tag.textContent = pref + ' ✕';
-    tag.onclick = () => removePref(pref);
-    el.appendChild(tag);
-  });
-}
-
-async function changeEra(year) {
-  currentEra = year;
-  // じだい かえたら activePrefs と paintMap リセット
-  activePrefs = [];
-  paintMap.clear();
-  features = [];
-  prefTopoData = [];
-  prefCache.clear();
-  gPoly.selectAll('path').remove();
-  gBorder.selectAll('path').remove();
-  renderPrefTags();
-  updateSidebar();
-  updateStats();
-
-  // 国ごと ボタン の むこう か こうしん
-  updateKuniButton();
-  // じだい ノト こうしん
-  const noteEl = document.getElementById('era-note');
-  if (year === 'bakumatsu') {
-    noteEl.textContent = 'データ：幕末明治地勢地図境界データ（人間文化研究機構）CC BY-NC';
-    toast('幕末モド！「ひょうじ に ついか」ボタン おして よみこんでネ');
-  } else {
-    noteEl.textContent = 'データ：国土数値情報（国交省）';
-    toast(`${year}年 に きりかえたヨ！けん を えらびなおして ネ`);
-  }
 }
 
 // =====================================================
@@ -1224,15 +1367,13 @@ async function changeEra(year) {
 let rectMode = null;
 
 function setRectMode(mode) {
-  // OFF に する（null を わたす か おなじ モード を おす）
   if (mode === null || rectMode === mode) {
     rectMode = null;
     document.getElementById('btn-rect-paint').classList.remove('active');
     document.getElementById('btn-rect-erase').classList.remove('active');
     document.getElementById('rect-hint').textContent = 'ドラッグ で まとめて ぬれるヨ';
     lmap.dragging.enable();
-    const old = document.getElementById('rect-svg-overlay');
-    if (old) old.remove();
+    const old = document.getElementById('rect-svg-overlay'); if (old) old.remove();
     return;
   }
   rectMode = mode;
@@ -1242,8 +1383,7 @@ function setRectMode(mode) {
   lmap.dragging.disable();
 
   const mapWrap = document.getElementById('map-wrap');
-  const old = document.getElementById('rect-svg-overlay');
-  if (old) old.remove();
+  const old = document.getElementById('rect-svg-overlay'); if (old) old.remove();
   const rectSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   rectSvg.id = 'rect-svg-overlay';
   rectSvg.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:all;z-index:420;cursor:crosshair;';
@@ -1286,30 +1426,29 @@ function setRectMode(mode) {
 }
 
 function applyRect(rx0, ry0, rx1, ry1, mode) {
-  let changed = false;
-  // rx0,ry0 は map-wrap きじゅん → leaflet の containerPoint に へんかん
+  const al = getActiveLayer();
+  if (!al || !al.features.length) return;
   const p0 = lmap.containerPointToLayerPoint([rx0, ry0]);
   const p1 = lmap.containerPointToLayerPoint([rx1, ry1]);
   const lx0 = Math.min(p0.x, p1.x), lx1 = Math.max(p0.x, p1.x);
   const ly0 = Math.min(p0.y, p1.y), ly1 = Math.max(p0.y, p1.y);
-  gPoly.selectAll('path').each(function(d) {
+  let changed = false;
+  al.gPoly.selectAll('path').each(function(d) {
     try {
-      const geom = d.geometry;
-      if (!geom) return;
+      const geom = d.geometry; if (!geom) return;
       let coords;
       if (geom.type === 'Polygon') coords = geom.coordinates[0];
       else if (geom.type === 'MultiPolygon') coords = geom.coordinates[0][0];
       else return;
       if (!coords || !coords.length) return;
-      const lng = coords.reduce((s, c) => s + c[0], 0) / coords.length;
-      const lat = coords.reduce((s, c) => s + c[1], 0) / coords.length;
+      const lng = coords.reduce((s,c) => s+c[0], 0)/coords.length;
+      const lat = coords.reduce((s,c) => s+c[1], 0)/coords.length;
       if (!isFinite(lat) || !isFinite(lng)) return;
       const pt = lmap.latLngToLayerPoint(L.latLng(lat, lng));
       if (pt.x >= lx0 && pt.x <= lx1 && pt.y >= ly0 && pt.y <= ly1) {
-        const code = getUniqueId(d);
-        if (!code) return;
-        if (mode === 'paint') { paintMap.set(code, currentColor); d3.select(this).attr('fill', currentColor); }
-        else { paintMap.delete(code); d3.select(this).attr('fill', landColor); }
+        const code = getUniqueId(d); if (!code) return;
+        if (mode === 'paint') { al.paintMap.set(code, currentColor); d3.select(this).attr('fill', currentColor); }
+        else { al.paintMap.delete(code); d3.select(this).attr('fill', landColor); }
         changed = true;
       }
     } catch(e) {}
@@ -1335,7 +1474,6 @@ function toggleTextMode() {
 
 document.getElementById('text-overlay').addEventListener('click', function(e) {
   if (!textMode) return;
-  // テキスト よそ の クリク は むし（へんしゅう は renderTextItem で ハンドル）
   if (e.target.classList.contains('map-text') || e.target.closest('.map-text')) return;
   const wrap = document.getElementById('map-wrap');
   const r = wrap.getBoundingClientRect();
@@ -1352,10 +1490,9 @@ document.getElementById('text-input').addEventListener('keydown', e => {
   if (e.key === 'Escape') cancelText();
 });
 
-let editingTextId = null; // へんしゅうちゅう の テキスト id
+let editingTextId = null;
 
 function openTextModal(item) {
-  // へんしゅう モード
   editingTextId = item ? item.id : null;
   document.getElementById('text-modal-title').textContent = item ? 'テキスト へんしゅう' : 'テキスト にゅうりょく';
   document.getElementById('text-input').value = item ? item.text : '';
@@ -1377,23 +1514,15 @@ function confirmText() {
   const size = parseInt(document.getElementById('text-modal-size').value);
   const color = document.getElementById('text-modal-color-preview').style.background || '#2a2520';
   if (!val) { cancelText(); return; }
-
   if (editingTextId) {
-    // へんしゅう モード：きぞん の テキスト こうしん
     const item = textItems.find(t => t.id === editingTextId);
     if (item) {
       item.text = val; item.size = size; item.color = color;
       const el = document.getElementById('txt-' + item.id);
-      if (el) {
-        el.childNodes[0].textContent = val;
-        el.style.fontSize = size + 'px';
-        el.style.color = color;
-      }
+      if (el) { el.childNodes[0].textContent = val; el.style.fontSize = size + 'px'; el.style.color = color; }
     }
-    cancelText();
-    return;
+    cancelText(); return;
   }
-
   if (!pendingTextPos) { cancelText(); return; }
   textCounter++;
   const item = { id: 't'+textCounter, lat: pendingTextPos.lat, lng: pendingTextPos.lng, x: pendingTextPos.x, y: pendingTextPos.y, text: val, size, color };
@@ -1432,10 +1561,7 @@ function renderTextItem(item) {
     item.lat = ll.lat; item.lng = ll.lng;
   });
   window.addEventListener('mouseup', e => {
-    if (dragging && !moved && e.target !== del) {
-      // ドラッグ してない → クリク → へんしゅう モーダル ひらく
-      openTextModal(item);
-    }
+    if (dragging && !moved && e.target !== del) openTextModal(item);
     dragging = false;
   });
   overlay.appendChild(el);
@@ -1459,34 +1585,32 @@ function getName(f) {
   const p = f.properties || {};
   return p.city || p.N03_004 || p.N03_003 || p.N03_002 || p.N03_001 || p.name || '';
 }
-function getPref(f) {
-  const p = f.properties || {};
-  return p.pref || p.N03_001 || '';
+function getPref(f) { const p = f.properties || {}; return p.pref || p.N03_001 || ''; }
+function getGun(f)  { const p = f.properties || {}; return p.gun  || p.N03_003 || ''; }
+
+function updateStats() {
+  const al = getActiveLayer();
+  document.getElementById('s-painted').textContent = al ? al.paintMap.size : 0;
 }
-function getGun(f) {
-  const p = f.properties || {};
-  return p.gun || p.N03_003 || '';
-}
-function updateStats() { document.getElementById('s-painted').textContent = paintMap.size; }
 
 // =====================================================
-// サイドバー
+// サイドバー（アクティブレイヤ の ぬりリスト）
 // =====================================================
 function updateSidebar() {
   const list = document.getElementById('mlist');
   const empty = document.getElementById('mlist-empty');
-  if (!paintMap.size) { empty.style.display = ''; list.innerHTML = ''; return; }
+  const al = getActiveLayer();
+  if (!al || !al.paintMap.size) { empty.style.display = ''; list.innerHTML = ''; return; }
   empty.style.display = 'none';
-  // 都道府県 → 郡 → 市区町村 の ３だんかい
   const prefGroups = {};
-  features.forEach(f => {
+  al.features.forEach(f => {
     const code = getUniqueId(f);
-    if (!paintMap.has(code)) return;
+    if (!al.paintMap.has(code)) return;
     const pref = getPref(f) || 'その他';
     const gun = getGun(f) || '（郡なし）';
     if (!prefGroups[pref]) prefGroups[pref] = {};
     if (!prefGroups[pref][gun]) prefGroups[pref][gun] = [];
-    prefGroups[pref][gun].push({ name: getName(f), code, color: paintMap.get(code) });
+    prefGroups[pref][gun].push({ name: getName(f), code, color: al.paintMap.get(code) });
   });
   list.innerHTML = '';
   Object.entries(prefGroups).forEach(([pref, gunGroups]) => {
@@ -1502,8 +1626,8 @@ function updateSidebar() {
         mi.className = 'mi'; mi.style.paddingLeft = '28px';
         mi.innerHTML = `<div class="dot" style="background:${color}"></div><span class="mi-name">${name}</span><span class="mi-clear" data-code="${code}">✕</span>`;
         mi.querySelector('.mi-clear').onclick = e => {
-          e.stopPropagation(); paintMap.delete(code);
-          gPoly.selectAll('path').filter(d => getUniqueId(d) === code).attr('fill', landColor);
+          e.stopPropagation(); al.paintMap.delete(code);
+          al.gPoly.selectAll('path').filter(d => getUniqueId(d) === code).attr('fill', landColor);
           updateSidebar(); updateStats();
         };
         prefEl.appendChild(mi);
@@ -1517,35 +1641,79 @@ function updateSidebar() {
 // セーブ/ロード
 // =====================================================
 function saveData() {
-  const obj = { version: 3, era: currentEra, activePrefs, paintMap: Object.fromEntries(paintMap), texts: textItems };
+  const obj = {
+    version: 4,
+    layers: layers.map(l => ({
+      id: l.id, name: l.name, era: l.era,
+      activePrefs: l.activePrefs, paintMap: Object.fromEntries(l.paintMap),
+      visible: l.visible, opacity: l.opacity,
+    })),
+    activeLayerId,
+    texts: textItems,
+  };
   const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
   const now = new Date();
   const ts = now.getFullYear().toString() + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0') + String(now.getHours()).padStart(2,'0') + String(now.getMinutes()).padStart(2,'0') + String(now.getSeconds()).padStart(2,'0');
-  a.download = `mukashi-nurichizu-${currentEra}_${ts}.json`;
+  a.download = `mukashi-nurichizu-multilayer_${ts}.json`;
   a.click();
   toast('セーブしたヨ！');
 }
 
-function loadData(ev) {
+async function loadData(ev) {
   const file = ev.target.files[0];
   if (!file) return;
   const reader = new FileReader();
   reader.onload = async e => {
     try {
       const obj = JSON.parse(e.target.result);
-      if (obj.era) { document.getElementById('era-sel').value = obj.era; currentEra = obj.era; }
-      if (obj.activePrefs) {
-        for (const p of obj.activePrefs) await loadPrefData(p, currentEra).catch(() => {});
-        activePrefs = obj.activePrefs; rebuildFeatures(); renderPrefTags();
+
+      // v4: レイヤ形式
+      if (obj.version >= 4 && obj.layers) {
+        layers = [];
+        layerCounter = 0;
+        for (const ld of obj.layers) {
+          const layer = createLayerObj(ld.name, ld.era);
+          layer.id = ld.id; // id ふくげん
+          layer.activePrefs = ld.activePrefs || [];
+          layer.visible = ld.visible !== false;
+          layer.opacity = ld.opacity || 75;
+          Object.entries(ld.paintMap || {}).forEach(([k,v]) => layer.paintMap.set(k,v));
+          layers.push(layer);
+        }
+        rebuildSvgGroups();
+        activeLayerId = obj.activeLayerId || layers[0].id;
+        // データ よみこみ
+        for (const layer of layers) {
+          for (const p of layer.activePrefs) {
+            await loadPrefData(p, layer.era).catch(() => {});
+          }
+          rebuildLayerMap(layer);
+        }
+        setActiveLayer(activeLayerId);
       }
-      if (obj.paintMap) { paintMap.clear(); Object.entries(obj.paintMap).forEach(([k,v]) => paintMap.set(k,v)); }
-      if (obj.texts) { textItems = []; document.getElementById('text-overlay').innerHTML = ''; obj.texts.forEach(t => { textItems.push(t); renderTextItem(t); }); }
-      gPoly.selectAll('path').attr('fill', d => paintMap.get(getUniqueId(d)) || landColor);
-      updateSidebar(); updateStats();
+      // v3: きゅうけいしき（ひとつのレイヤとして よむ）
+      else if (obj.version === 3) {
+        const layer = layers[0];
+        if (obj.era) layer.era = obj.era;
+        if (obj.activePrefs) {
+          for (const p of obj.activePrefs) await loadPrefData(p, layer.era).catch(() => {});
+          layer.activePrefs = obj.activePrefs;
+          rebuildLayerMap(layer);
+        }
+        if (obj.paintMap) { layer.paintMap.clear(); Object.entries(obj.paintMap).forEach(([k,v]) => layer.paintMap.set(k,v)); }
+        layer.gPoly && layer.gPoly.selectAll('path').attr('fill', d => layer.paintMap.get(getUniqueId(d)) || landColor);
+        renderLayerList();
+        updateSidebar(); updateStats();
+      }
+
+      if (obj.texts) {
+        textItems = []; document.getElementById('text-overlay').innerHTML = '';
+        obj.texts.forEach(t => { textItems.push(t); renderTextItem(t); });
+      }
       toast('ロードしたヨ！');
-    } catch(err) { toast('よみこみ エラー…'); }
+    } catch(err) { console.error(err); toast('よみこみ エラー…'); }
     ev.target.value = '';
   };
   reader.readAsText(file);
@@ -1553,64 +1721,56 @@ function loadData(ev) {
 
 function clearAll() {
   if (!confirm('ぜんぶ クリア しますか？')) return;
-  paintMap.clear();
+  layers.forEach(layer => {
+    layer.paintMap.clear();
+    layer.gPoly && layer.gPoly.selectAll('path').attr('fill', landColor);
+  });
   textItems = []; document.getElementById('text-overlay').innerHTML = '';
-  gPoly.selectAll('path').attr('fill', landColor);
-  // じどう いろかえ モード リセト
-  autoColorEnabled = false;
-  autoColorIndex = 0;
+  autoColorEnabled = false; autoColorIndex = 0;
   autoColorSlots = ['#e05030', '#2080c0', '#60a840', '#d4b020'];
   document.getElementById('auto-color-toggle').checked = false;
   const detail = document.getElementById('auto-color-detail');
-  detail.style.opacity = '0.4';
-  detail.style.pointerEvents = 'none';
-  renderAutoSlots();
-  setCurrentColor('#e05030');
+  detail.style.opacity = '0.4'; detail.style.pointerEvents = 'none';
+  renderAutoSlots(); setCurrentColor('#e05030');
   updateSidebar(); updateStats();
   toast('クリアしたヨ！');
 }
 
 // =====================================================
-// キャプチャ
+// キャプチャ（アクティブレイヤ のみ SVG）
 // =====================================================
 async function capturePNG() {
   toast('PNG キャプチャ ちゅう…');
   try {
     const canvas = await html2canvas(document.getElementById('map-wrap'), { useCORS: true, scale: 2 });
     const a = document.createElement('a');
-    a.download = `mukashi-nurichizu-${currentEra}.png`;
+    const al = getActiveLayer();
+    a.download = `mukashi-nurichizu-${al ? al.era : 'map'}.png`;
     a.href = canvas.toDataURL('image/png'); a.click();
     toast('PNG ほぞん できたヨ！');
   } catch(e) { toast('PNG キャプチャ しっぱい…'); }
 }
 
 function captureSVG(mode) {
-  // mode: 'merged'（がっぺい がいわく）or 'detail'（いま まで どおり）
-  if (!paintMap.size) { toast('まず ぬってからネ！'); return; }
+  const al = getActiveLayer();
+  if (!al || !al.paintMap.size) { toast('まず ぬってからネ！'); return; }
   const wrap = document.getElementById('map-wrap');
   const W = wrap.clientWidth, H = wrap.clientHeight;
   let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}"><rect width="${W}" height="${H}" fill="${landColor}"/>`;
 
   const colorGroups = new Map();
-  paintMap.forEach((color, code) => {
+  al.paintMap.forEach((color, code) => {
     if (!colorGroups.has(color)) colorGroups.set(color, []);
     colorGroups.get(color).push(code);
   });
 
   if (mode === 'merged') {
-    // おなじ いろ の ポリゴン を topojson.merge で がっぺい → がいわく だけ
     colorGroups.forEach((codes, color) => {
       let mergedPath = '';
-      prefTopoData.forEach(({ topo, objKey }) => {
+      al.prefTopoData.forEach(({ topo, objKey }) => {
         try {
           const obj = topo.objects[objKey];
-          // codes に ふくまれる feature だけ フィルタ
-          const matchFn = (a, b) => {
-            // merge: どちらか が codes に ふくまれる feature
-            return true; // mesh は つかわない
-          };
           const merged = topojson.merge(topo, obj.geometries.filter(g => {
-            // この geometry に たいおうする feature の uid が codes に あるカ
             const props = g.properties || {};
             const pref = props.pref || props.N03_001 || '';
             const kuni = props.kuni || '';
@@ -1623,27 +1783,23 @@ function captureSVG(mode) {
           if (d) mergedPath += d;
         } catch(e) {}
       });
-      if (mergedPath) {
-        svg += `<path fill="${color}" stroke="${color}" stroke-width="0.5" stroke-linejoin="round" d="${mergedPath}"/>`;
-      }
+      if (mergedPath) svg += `<path fill="${color}" stroke="${color}" stroke-width="0.5" stroke-linejoin="round" d="${mergedPath}"/>`;
     });
   } else {
-    // detail: いま まで どおり、ポリゴン ひとつずつ
     colorGroups.forEach((codes, color) => {
-      const members = features.filter(f => codes.includes(getUniqueId(f)));
+      const members = al.features.filter(f => codes.includes(getUniqueId(f)));
       svg += `<g data-color="${color}">`;
       members.forEach(f => { const d = geoPathFn(f); if (d) svg += `<path fill="${color}" d="${d}"/>`; });
       svg += `</g>`;
     });
     if (borderMuniWidth > 0) {
-      const painted = features.filter(f => paintMap.has(getUniqueId(f)));
+      const painted = al.features.filter(f => al.paintMap.has(getUniqueId(f)));
       const ap = painted.map(f => geoPathFn(f)).filter(Boolean).join('');
       const dash = borderMuniDash !== 'none' ? ` stroke-dasharray="${borderMuniDash}"` : '';
       svg += `<path fill="none" stroke="${borderMuniColor}" stroke-width="${borderMuniWidth}"${dash} d="${ap}"/>`;
     }
   }
 
-  // テキスト は りょうほう で でる
   if (textItems.length) {
     svg += `<g>`;
     textItems.forEach(t => { svg += `<text x="${t.x.toFixed(1)}" y="${t.y.toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="${t.size}" fill="${t.color}" font-family="sans-serif" font-weight="bold">${t.text}</text>`; });
@@ -1656,7 +1812,7 @@ function captureSVG(mode) {
   const now = new Date();
   const ts = now.getFullYear().toString() + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0') + String(now.getHours()).padStart(2,'0') + String(now.getMinutes()).padStart(2,'0') + String(now.getSeconds()).padStart(2,'0');
   const suffix = mode === 'merged' ? 'merged' : 'detail';
-  a.download = `mukashi-nurichizu-${currentEra}_${suffix}_${ts}.svg`;
+  a.download = `mukashi-nurichizu-${al.era}_${suffix}_${ts}.svg`;
   a.href = URL.createObjectURL(blob); a.click();
   toast('SVG ほぞん できたヨ！');
 }
@@ -1677,8 +1833,7 @@ let tipTimer = null;
 function showTip(ev, text) {
   clearTimeout(tipTimer);
   const tip = document.getElementById('tooltip');
-  tip.textContent = text;
-  moveTip(ev);
+  tip.textContent = text; moveTip(ev);
   tipTimer = setTimeout(() => { tip.style.opacity = '1'; }, 600);
 }
 function moveTip(ev) {
@@ -1722,8 +1877,13 @@ window.addEventListener('resize', () => updateSvgOverlay());
 // =====================================================
 function init() {
   initPalette();
-  initPrefSel();
   initMap();
+  // さいしょの レイヤを 1まい つくる
+  const firstLayer = createLayerObj('レイヤ 1', '1920');
+  layers.push(firstLayer);
+  rebuildSvgGroups();
+  setActiveLayer(firstLayer.id);
+  renderLayerList();
   document.getElementById('loading').style.display = 'none';
   toast('けん を えらんで ちず を ひょうじ してネ！');
 }
