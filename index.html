@@ -55,7 +55,7 @@ header {
 
 /* ボディ */
 .body { display: flex; flex: 1; overflow: hidden; flex-direction: column; }
-.map-area { display: flex; flex: 1; overflow: hidden; }
+.map-area { display: flex; flex: 1; overflow: hidden; min-height: 0; }
 #infobar { background: var(--panel); border-top: 1px solid var(--border); padding: 5px 14px; font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 8px; height: 28px; flex-shrink: 0; z-index: 500; white-space: nowrap; overflow: hidden; }
 #infobar .ib-label { color: var(--accent); font-weight: 700; margin-right: 2px; }
 #infobar .ib-name { color: var(--text); }
@@ -376,7 +376,7 @@ svg#map:active { cursor: grabbing; }
   </button>
   <div class="logo">🗾</div>
   <div>
-    <div class="title">ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);letter-spacing:.05em;">v1.6.0</span></div>
+    <div class="title">ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);letter-spacing:.05em;">v1.6.1</span></div>
     <div class="subtitle">市区町村 ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -387,6 +387,7 @@ svg#map:active { cursor: grabbing; }
 <div id="drawer-overlay" onclick="closeDrawer()"></div>
 
 <div class="body">
+<div class="map-area">
   <aside>
     <!-- いろえらび -->
     <div class="sec">
@@ -556,8 +557,6 @@ svg#map:active { cursor: grabbing; }
       <div id="mlist"></div>
     </div>
   </aside>
-
-<div class="map-area">
   <div id="map-wrap">
     <div id="loading"><div class="spinner"></div>地図データ よみこみちゅう…</div>
     <svg id="map">
