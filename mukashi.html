@@ -136,7 +136,7 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
   <button class="hamburger" id="hamburger" onclick="toggleDrawer()"><span></span><span></span><span></span></button>
   <div class="logo">🗺️</div>
   <div>
-    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.5.1</span></div>
+    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.5.2</span></div>
     <div class="subtitle">れきしてき ぎょうせいくいき ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -1593,11 +1593,6 @@ function captureSVG() {
     const members = features.filter(f => codes.includes(getUniqueId(f)));
     svg += `<g data-color="${color}">`;
     members.forEach(f => { const d = geoPathFn(f); if (d) svg += `<path data-name="${getName(f)}" fill="${color}" d="${d}"/>`; });
-    if (outlineWidth > 0) {
-      const ap = members.map(f => geoPathFn(f)).filter(Boolean).join('');
-      const dash = outlineDash !== 'none' ? ` stroke-dasharray="${outlineDash}"` : '';
-      svg += `<path fill="none" stroke="${color}" stroke-width="${outlineWidth}"${dash} stroke-linejoin="round" d="${ap}"/>`;
-    }
     svg += `</g>`;
   });
   if (borderMuniWidth > 0) {
@@ -1613,7 +1608,9 @@ function captureSVG() {
   svg += `</svg>`;
   const blob = new Blob([svg], { type: 'image/svg+xml' });
   const a = document.createElement('a');
-  a.download = `mukashi-nurichizu-${currentEra}.svg`; a.href = URL.createObjectURL(blob); a.click();
+  const now = new Date();
+  const ts = now.getFullYear().toString() + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0') + String(now.getHours()).padStart(2,'0') + String(now.getMinutes()).padStart(2,'0') + String(now.getSeconds()).padStart(2,'0');
+  a.download = `mukashi-nurichizu-${currentEra}_${ts}.svg`; a.href = URL.createObjectURL(blob); a.click();
   toast('SVG ほぞん できたヨ！');
 }
 
