@@ -22,7 +22,7 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
-  height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -54,7 +54,11 @@ header {
 .stat-badge strong { color: var(--accent); font-size: 14px; font-weight: 700; }
 
 /* ボディ */
-.body { display: flex; flex: 1; overflow: hidden; }
+.body { display: flex; flex: 1; overflow: hidden; flex-direction: column; }
+.map-area { display: flex; flex: 1; overflow: hidden; }
+#infobar { background: var(--panel); border-top: 1px solid var(--border); padding: 5px 14px; font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 8px; height: 28px; flex-shrink: 0; z-index: 500; white-space: nowrap; overflow: hidden; }
+#infobar .ib-label { color: var(--accent); font-weight: 700; margin-right: 2px; }
+#infobar .ib-name { color: var(--text); }
 
 /* サイドパネル */
 aside {
@@ -339,6 +343,29 @@ svg#map:active { cursor: grabbing; }
   animation: spin .7s linear infinite;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
+/* カラ パレット ポップアップ */
+.cp-popup { display: none; position: fixed; z-index: 9999; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 10px; box-shadow: 0 4px 16px rgba(0,0,0,.15); width: 200px; }
+.cp-popup.open { display: block; }
+.cp-palette { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px; }
+.cp-swatch { width: 22px; height: 22px; border-radius: 4px; cursor: pointer; border: 1.5px solid transparent; transition: transform .1s, border-color .1s; flex-shrink: 0; }
+.cp-swatch:hover { transform: scale(1.15); }
+.cp-swatch.active { border-color: var(--text); }
+.cp-input-row { display: flex; gap: 6px; align-items: center; }
+.cp-input-row input[type=text] { flex: 1; padding: 4px 6px; border: 1px solid var(--border); border-radius: 5px; font-size: 11px; font-family: inherit; color: var(--text); background: var(--bg); outline: none; }
+.cp-input-row input[type=text]:focus { border-color: var(--accent2); }
+.cp-preview-small { width: 22px; height: 22px; border-radius: 4px; border: 1.5px solid var(--border); flex-shrink: 0; }
+/* じどう いろかえ モード */
+.auto-color-slots { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 6px; align-items: center; }
+.auto-slot { width: 28px; height: 28px; border-radius: 5px; border: 2px solid var(--border); cursor: pointer; flex-shrink: 0; transition: transform .1s, border-color .1s; position: relative; }
+.auto-slot:hover { transform: scale(1.1); }
+.auto-slot.current { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent2); }
+.auto-slot-del { position: absolute; top: -5px; right: -5px; width: 13px; height: 13px; background: #c03030; color: white; border-radius: 50%; font-size: 9px; display: none; align-items: center; justify-content: center; cursor: pointer; line-height: 1; }
+.auto-slot:hover .auto-slot-del { display: flex; }
+.auto-add-btn { width: 28px; height: 28px; border-radius: 5px; border: 1.5px dashed var(--border); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; color: var(--muted); background: none; flex-shrink: 0; transition: all .1s; }
+.auto-add-btn:hover { border-color: var(--accent2); color: var(--accent); }
+.auto-indicator { display: flex; gap: 3px; margin-top: 5px; }
+.auto-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--border); transition: background .2s; }
+.auto-dot.current { background: var(--accent); }
 </style>
 </head>
 <body>
@@ -349,7 +376,7 @@ svg#map:active { cursor: grabbing; }
   </button>
   <div class="logo">🗾</div>
   <div>
-    <div class="title">ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);letter-spacing:.05em;">v1.5.1</span></div>
+    <div class="title">ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);letter-spacing:.05em;">v1.6.0</span></div>
     <div class="subtitle">市区町村 ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -371,6 +398,20 @@ svg#map:active { cursor: grabbing; }
       </div>
       <div class="palette" id="palette"></div>
       <div class="color-hint">地図をクリックすると この色でぬれるヨ</div>
+    </div>
+
+    <!-- じどう いろかえ モード -->
+    <div class="sec">
+      <div class="sec-h">じどう いろかえ</div>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--muted);">
+        <input type="checkbox" id="auto-color-toggle" onchange="toggleAutoColor(this.checked)" style="accent-color:var(--accent);width:14px;height:14px;">
+        ぬるたびに いろ じどう きりかえ
+      </label>
+      <div id="auto-color-detail" style="margin-top:8px;opacity:0.4;pointer-events:none;">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:4px;">ローテション する いろ（2〜5こ）</div>
+        <div class="auto-color-slots" id="auto-color-slots"></div>
+        <div class="auto-indicator" id="auto-indicator"></div>
+      </div>
     </div>
 
     <!-- まとめて塗るモード -->
@@ -516,6 +557,7 @@ svg#map:active { cursor: grabbing; }
     </div>
   </aside>
 
+<div class="map-area">
   <div id="map-wrap">
     <div id="loading"><div class="spinner"></div>地図データ よみこみちゅう…</div>
     <svg id="map">
@@ -533,6 +575,8 @@ svg#map:active { cursor: grabbing; }
       <button class="zoom-btn" onclick="zoomOut()">－</button>
     </div>
   </div>
+</div>
+<div id="infobar"><span class="ib-label">📍</span><span class="ib-name" id="ib-name">──</span></div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -560,6 +604,7 @@ function initPalette() {
     sw.onclick = () => setCurrentColor(c);
     pal.appendChild(sw);
   });
+  renderAutoSlots();
 }
 
 function setCurrentColor(c) {
@@ -571,6 +616,139 @@ function setCurrentColor(c) {
     sw.classList.toggle('active', sw.title === c);
   });
 }
+
+// =====================================================
+// じどう いろかえ モード
+// =====================================================
+let autoColorEnabled = false;
+let autoColorSlots = ['#e05030', '#2080c0', '#60a840', '#d4b020'];
+let autoColorIndex = 0;
+let cpCallback = null;
+
+function toggleAutoColor(on) {
+  autoColorEnabled = on;
+  const detail = document.getElementById('auto-color-detail');
+  detail.style.opacity = on ? '1' : '0.4';
+  detail.style.pointerEvents = on ? 'auto' : 'none';
+  if (on) { autoColorIndex = 0; setCurrentColor(autoColorSlots[0]); }
+  renderAutoSlots();
+}
+
+function renderAutoSlots() {
+  const wrap = document.getElementById('auto-color-slots');
+  const ind  = document.getElementById('auto-indicator');
+  wrap.innerHTML = ''; ind.innerHTML = '';
+  autoColorSlots.forEach((c, i) => {
+    const slot = document.createElement('div');
+    slot.className = 'auto-slot' + (i === autoColorIndex ? ' current' : '');
+    slot.style.background = c; slot.title = c;
+    slot.onclick = (e) => {
+      e.stopPropagation();
+      const idx2 = i;
+      openColorPopupFromEl(slot, c, nc => {
+        autoColorSlots[idx2] = nc;
+        if (autoColorEnabled && idx2 === autoColorIndex) setCurrentColor(nc);
+        renderAutoSlots();
+      });
+    };
+    if (autoColorSlots.length > 2) {
+      const del = document.createElement('div');
+      del.className = 'auto-slot-del'; del.textContent = '×';
+      del.onclick = e => { e.stopPropagation(); removeAutoSlot(i); };
+      slot.appendChild(del);
+    }
+    wrap.appendChild(slot);
+    const dot = document.createElement('div');
+    dot.className = 'auto-dot' + (i === autoColorIndex ? ' current' : '');
+    ind.appendChild(dot);
+  });
+  // けすステップ ドット
+  const eraseDot = document.createElement('div');
+  eraseDot.className = 'auto-dot' + (autoColorIndex >= autoColorSlots.length ? ' current' : '');
+  eraseDot.style.cssText = 'font-size:8px;width:auto;height:auto;background:none;display:flex;align-items:center;';
+  eraseDot.textContent = '🗑';
+  ind.appendChild(eraseDot);
+  if (autoColorSlots.length < 5) {
+    const add = document.createElement('button');
+    add.className = 'auto-add-btn'; add.textContent = '+';
+    add.onclick = () => addAutoSlot();
+    wrap.appendChild(add);
+  }
+}
+
+function addAutoSlot() {
+  const last = autoColorSlots[autoColorSlots.length - 1];
+  autoColorSlots.push(shiftHue(last, 60));
+  renderAutoSlots();
+}
+function removeAutoSlot(i) {
+  autoColorSlots.splice(i, 1);
+  if (autoColorIndex >= autoColorSlots.length) autoColorIndex = 0;
+  if (autoColorEnabled) setCurrentColor(autoColorSlots[autoColorIndex]);
+  renderAutoSlots();
+}
+function advanceAutoColor() {
+  if (!autoColorEnabled) return;
+  autoColorIndex = (autoColorIndex + 1) % (autoColorSlots.length + 1);
+  if (autoColorIndex < autoColorSlots.length) setCurrentColor(autoColorSlots[autoColorIndex]);
+  renderAutoSlots();
+}
+function shiftHue(hex, deg) {
+  let r = parseInt(hex.slice(1,3),16)/255, g = parseInt(hex.slice(3,5),16)/255, b = parseInt(hex.slice(5,7),16)/255;
+  const max = Math.max(r,g,b), min = Math.min(r,g,b), d = max - min;
+  let h = 0, s = max === 0 ? 0 : d/max, v = max;
+  if (d > 0) {
+    if (max === r) h = ((g-b)/d + 6) % 6;
+    else if (max === g) h = (b-r)/d + 2;
+    else h = (r-g)/d + 4;
+    h *= 60;
+  }
+  h = (h + deg) % 360;
+  const c2 = v*s, x = c2*(1-Math.abs((h/60)%2-1)), m = v-c2;
+  let rr,gg,bb;
+  if      (h<60)  {rr=c2;gg=x;bb=0;}
+  else if (h<120) {rr=x;gg=c2;bb=0;}
+  else if (h<180) {rr=0;gg=c2;bb=x;}
+  else if (h<240) {rr=0;gg=x;bb=c2;}
+  else if (h<300) {rr=x;gg=0;bb=c2;}
+  else            {rr=c2;gg=0;bb=x;}
+  const toHex = n => Math.round((n+m)*255).toString(16).padStart(2,'0');
+  return '#'+toHex(rr)+toHex(gg)+toHex(bb);
+}
+
+// カラ ポップアップ（DOM ようそ を アンカ に）
+function openColorPopupFromEl(anchorEl, currentVal, callback) {
+  const existing = document.getElementById('cp-popup-global');
+  if (existing) existing.remove();
+  cpCallback = callback;
+  const popup = document.createElement('div');
+  popup.id = 'cp-popup-global'; popup.className = 'cp-popup open';
+  const pal = document.createElement('div'); pal.className = 'cp-palette';
+  PRESET_COLORS.forEach(c => {
+    const sw = document.createElement('div');
+    sw.className = 'cp-swatch' + (c === currentVal ? ' active' : '');
+    sw.style.background = c;
+    sw.onclick = () => { cpCallback(c); popup.remove(); };
+    pal.appendChild(sw);
+  });
+  popup.appendChild(pal);
+  const row = document.createElement('div'); row.className = 'cp-input-row';
+  const prev = document.createElement('div'); prev.className = 'cp-preview-small'; prev.style.background = currentVal;
+  const inp = document.createElement('input'); inp.type = 'text'; inp.value = currentVal; inp.placeholder = '#rrggbb';
+  inp.oninput = () => { const v = inp.value.trim(); if (/^#[0-9a-fA-F]{6}$/.test(v)) { prev.style.background = v; cpCallback(v); } };
+  inp.onkeydown = e => { if (e.key === 'Enter') popup.remove(); };
+  row.appendChild(prev); row.appendChild(inp); popup.appendChild(row);
+  document.body.appendChild(popup);
+  const rect = anchorEl.getBoundingClientRect();
+  popup.style.position = 'fixed'; popup.style.top = (rect.bottom + 4) + 'px'; popup.style.left = rect.left + 'px'; popup.style.zIndex = 9999;
+  setTimeout(() => {
+    document.addEventListener('click', function handler(e) {
+      if (!popup.contains(e.target) && e.target !== anchorEl) { popup.remove(); document.removeEventListener('click', handler); }
+    });
+  }, 0);
+}
+
+
 
 // =====================================================
 // データ
@@ -764,6 +942,16 @@ function clearAll() {
   if (!paintMap.size) return;
   if (!confirm('ぜんぶ クリア しますか？')) return;
   paintMap.clear();
+  // じどう いろかえ リセト
+  autoColorEnabled = false;
+  autoColorIndex = 0;
+  autoColorSlots = ['#e05030', '#2080c0', '#60a840', '#d4b020'];
+  document.getElementById('auto-color-toggle').checked = false;
+  const detail = document.getElementById('auto-color-detail');
+  detail.style.opacity = '0.4';
+  detail.style.pointerEvents = 'none';
+  renderAutoSlots();
+  setCurrentColor('#e05030');
   redraw();
   updateSidebar();
   updateStats();
@@ -865,12 +1053,22 @@ function buildMap() {
       ev.stopPropagation();
       const code = getCode(d);
       if (!code) return;
+      // じどう いろかえ の「けすステップ」
+      const isEraseStep = autoColorEnabled && autoColorIndex >= autoColorSlots.length;
+      if (isEraseStep) {
+        paintMap.delete(code);
+        d3.select(this).attr('fill', currentPrefFilter && getPref(d) !== currentPrefFilter ? 'rgba(0,0,0,0.04)' : landColor);
+        updateSidebar(); updateStats();
+        advanceAutoColor();
+        return;
+      }
       if (paintMap.has(code) && paintMap.get(code) === currentColor) {
         paintMap.delete(code);
         d3.select(this).attr('fill', currentPrefFilter && getPref(d) !== currentPrefFilter ? 'rgba(0,0,0,0.04)' : landColor);
       } else {
         paintMap.set(code, currentColor);
         d3.select(this).attr('fill', currentColor);
+        if (autoColorEnabled) advanceAutoColor();
       }
       updateSidebar();
       updateStats();
@@ -900,16 +1098,22 @@ function buildMap() {
 // ツールチップ
 // =====================================================
 const tip = document.getElementById('tooltip');
+let tipTimer = null;
 function showTip(ev, d) {
   const code = getCode(d);
   const color = paintMap.get(code);
-  document.getElementById('tt-name').textContent = getName(d);
-  document.getElementById('tt-pref').textContent = getPref(d);
+  const name = getName(d);
+  const pref = getPref(d);
+  document.getElementById('tt-name').textContent = name;
+  document.getElementById('tt-pref').textContent = pref;
   document.getElementById('tt-color').textContent = color ? `ぬった いろ：${color}` : 'まだ ぬってないヨ';
   if (color) document.getElementById('tt-color').style.color = color;
   else document.getElementById('tt-color').style.color = '';
-  tip.style.opacity = '1';
   moveTip(ev);
+  clearTimeout(tipTimer);
+  tipTimer = setTimeout(() => { tip.style.opacity = '1'; }, 600);
+  // インフォバ リアルタイム
+  updateInfobar(`${pref}　${name}`);
 }
 function moveTip(ev) {
   const wrap = document.getElementById('map-wrap');
@@ -919,7 +1123,14 @@ function moveTip(ev) {
   tip.style.left = x + 'px';
   tip.style.top = y + 'px';
 }
-function hideTip() { tip.style.opacity = '0'; }
+function hideTip() {
+  clearTimeout(tipTimer);
+  tip.style.opacity = '0';
+  updateInfobar('──');
+}
+function updateInfobar(text) {
+  document.getElementById('ib-name').textContent = text || '──';
+}
 
 // =====================================================
 // 都道府県フィルタ

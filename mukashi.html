@@ -15,7 +15,7 @@
   --text: #2a2520; --muted: #9a8f85; --accent: #7040a0; --accent2: #9060c0;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { background: var(--bg); color: var(--text); font-family: 'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+body { background: var(--bg); color: var(--text); font-family: 'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
 header { background: var(--panel); border-bottom: 1px solid var(--border); padding: 10px 16px; display: flex; align-items: center; gap: 14px; flex-shrink: 0; z-index: 1000; }
 .logo { font-size: 22px; }
 .title { font-size: 15px; font-weight: 700; letter-spacing: .04em; color: var(--accent); }
@@ -25,7 +25,8 @@ header { background: var(--panel); border-bottom: 1px solid var(--border); paddi
 .hd-link:hover { border-color: var(--accent2); color: var(--accent); }
 .stat-badge { background: var(--bg); border: 1px solid var(--border); border-radius: 20px; padding: 3px 12px; font-size: 12px; color: var(--muted); }
 .stat-badge strong { color: var(--accent); font-size: 14px; font-weight: 700; }
-.body { display: flex; flex: 1; overflow: hidden; }
+.body { display: flex; flex: 1; overflow: hidden; flex-direction: column; }
+.map-area { display: flex; flex: 1; overflow: hidden; }
 aside { width: 270px; background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; z-index: 500; }
 aside::-webkit-scrollbar { width: 3px; }
 aside::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
@@ -66,6 +67,9 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
 .mi-clear:hover { background: rgba(0,0,0,.06); color: var(--accent); }
 .empty { text-align: center; padding: 24px 14px; color: var(--muted); font-size: 11px; line-height: 1.8; }
 #map-wrap { flex: 1; position: relative; overflow: hidden; }
+#infobar { background: var(--panel); border-top: 1px solid var(--border); padding: 5px 14px; font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 8px; height: 28px; flex-shrink: 0; z-index: 500; white-space: nowrap; overflow: hidden; }
+#infobar .ib-label { color: var(--accent); font-weight: 700; margin-right: 2px; }
+#infobar .ib-name { color: var(--text); }
 #leaflet-map { width: 100%; height: 100%; background: #c8d8e8; }
 .leaflet-overlay-pane svg { pointer-events: none; }
 .leaflet-overlay-pane svg .g-poly path { pointer-events: all; }
@@ -132,7 +136,7 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
   <button class="hamburger" id="hamburger" onclick="toggleDrawer()"><span></span><span></span><span></span></button>
   <div class="logo">🗺️</div>
   <div>
-    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.4.6</span></div>
+    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.4.7</span></div>
     <div class="subtitle">れきしてき ぎょうせいくいき ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -341,6 +345,7 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
       <div id="mlist"></div>
     </div>
 
+<div class="map-area">
   </aside>
 
   <div id="map-wrap">
@@ -354,6 +359,8 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
       <button class="zoom-btn" onclick="lmap.zoomOut()">－</button>
     </div>
   </div>
+</div>
+<div id="infobar"><span class="ib-label">📍</span><span class="ib-name" id="ib-name">──</span></div>
 </div>
 
 <div class="modal-bg" id="text-modal">
@@ -881,10 +888,14 @@ function buildMap() {
       const kuni = p.kuni || '';
       const color = paintMap.get(uid);
       const kuniStr = kuni ? ` [${kuni}]` : '';
-      showTip(ev, `${pref}${kuniStr}${gun ? ' ' + gun : ''} ${name}${color ? ' (' + color + ')' : ''}`);
+      // 幕末 は gun === city なので name を 2かい だしない
+      const nameStr = (name && name !== gun) ? ' ' + name : '';
+      const infoText = `${pref}${kuniStr}${gun ? ' ' + gun : ''}${nameStr}`;
+      showTip(ev, `${infoText}${color ? ' (' + color + ')' : ''}`);
+      updateInfobar(infoText);
     })
     .on('mousemove', ev => moveTip(ev))
-    .on('mouseout', () => hideTip())
+    .on('mouseout', () => { hideTip(); updateInfobar('──'); })
     .on('click', function(ev, d) {
       if (textMode || rectMode) return;
       if (ev && ev.stopPropagation) ev.stopPropagation();
@@ -1616,11 +1627,13 @@ function fetchWithTimeout(url, ms=10000) {
 // =====================================================
 // ツールチップ
 // =====================================================
+let tipTimer = null;
 function showTip(ev, text) {
+  clearTimeout(tipTimer);
   const tip = document.getElementById('tooltip');
   tip.textContent = text;
-  tip.style.opacity = '1';
   moveTip(ev);
+  tipTimer = setTimeout(() => { tip.style.opacity = '1'; }, 600);
 }
 function moveTip(ev) {
   const tip = document.getElementById('tooltip');
@@ -1630,7 +1643,13 @@ function moveTip(ev) {
   if (x + 220 > wrap.clientWidth) x = ev.clientX - r.left - 220;
   tip.style.left = x + 'px'; tip.style.top = y + 'px';
 }
-function hideTip() { document.getElementById('tooltip').style.opacity = '0'; }
+function hideTip() {
+  clearTimeout(tipTimer);
+  document.getElementById('tooltip').style.opacity = '0';
+}
+function updateInfobar(text) {
+  document.getElementById('ib-name').textContent = text || '──';
+}
 
 // =====================================================
 // トースト・ドロワー
