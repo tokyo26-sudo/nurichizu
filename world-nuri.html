@@ -124,7 +124,7 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
   <button class="hamburger" id="hamburger" onclick="toggleDrawer()"><span></span><span></span><span></span></button>
   <div class="logo">🌍</div>
   <div>
-    <div class="title">せかい ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v1.0.5</span></div>
+    <div class="title">せかい ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v1.0.6</span></div>
     <div class="subtitle">せかいの くに・しゅう ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -963,36 +963,75 @@ function clearAll() {
 }
 
 // =====================================================
-// PNG キャプチャ
+// PNG キャプチャ（SVG → Canvas 直接描画）
 // =====================================================
 async function capturePNG() {
   toast('PNG キャプチャ ちゅう…');
   try {
-    const canvas = await html2canvas(document.getElementById('map-wrap'), {
-      useCORS: true,
-      scale: 2,
-      backgroundColor: seaColor,
-      onclone: (doc) => {
-        // SVGの <path> の fill 属性を style="fill:..." に コピー
-        // （html2canvas は SVG の属性ベースの fill を よみとれないため）
-        doc.querySelectorAll('.leaflet-overlay-pane svg path').forEach(path => {
-          const fill = path.getAttribute('fill');
-          const stroke = path.getAttribute('stroke');
-          const sw = path.getAttribute('stroke-width');
-          const sd = path.getAttribute('stroke-dasharray');
-          let style = '';
-          if (fill && fill !== 'none') style += `fill:${fill};`;
-          else if (fill === 'none') style += 'fill:none;';
-          if (stroke && stroke !== 'none') style += `stroke:${stroke};`;
-          if (sw) style += `stroke-width:${sw};`;
-          if (sd) style += `stroke-dasharray:${sd};`;
-          if (style) path.style.cssText = style;
-        });
-        // うみ の いろ を leaflet-map の background に てきよう
-        const lm = doc.getElementById('leaflet-map');
-        if (lm) lm.style.backgroundColor = seaColor;
+    const mapWrap = document.getElementById('map-wrap');
+    const w = mapWrap.clientWidth;
+    const h = mapWrap.clientHeight;
+    const scale = 2;
+
+    // ① canvas つくる
+    const canvas = document.createElement('canvas');
+    canvas.width = w * scale;
+    canvas.height = h * scale;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(scale, scale);
+
+    // ② うみいろ で ぬりつぶす
+    ctx.fillStyle = seaColor;
+    ctx.fillRect(0, 0, w, h);
+
+    // ③ SVGを まるごと シリアライズして Image に かきこむ
+    const svgEl = document.querySelector('.leaflet-overlay-pane svg');
+    if (svgEl) {
+      // SVGの viewBox・サイズ を mapWrap に あわせる
+      const clonedSvg = svgEl.cloneNode(true);
+      clonedSvg.setAttribute('width', w);
+      clonedSvg.setAttribute('height', h);
+      // transform を とりのぞいて leaflet-zoom-animated のズレを ほせい
+      const pane = clonedSvg.querySelector('.leaflet-zoom-animated');
+      if (pane) {
+        const transform = svgEl.querySelector('.leaflet-zoom-animated')?.getAttribute('transform') || '';
+        pane.setAttribute('transform', transform);
       }
-    });
+      // fill属性 → style に コピー（ブラウザ依存 かいひ）
+      clonedSvg.querySelectorAll('path').forEach(p => {
+        const fill = p.getAttribute('fill');
+        const stroke = p.getAttribute('stroke');
+        const sw = p.getAttribute('stroke-width');
+        const sd = p.getAttribute('stroke-dasharray');
+        let s = '';
+        if (fill) s += `fill:${fill};`;
+        if (stroke) s += `stroke:${stroke};`;
+        if (sw) s += `stroke-width:${sw};`;
+        if (sd) s += `stroke-dasharray:${sd};`;
+        if (s) p.setAttribute('style', s);
+      });
+      const svgStr = new XMLSerializer().serializeToString(clonedSvg);
+      const blob = new Blob([svgStr], {type:'image/svg+xml;charset=utf-8'});
+      const url = URL.createObjectURL(blob);
+      await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+          // SVG の offset を leaflet-overlay-pane から とる
+          const paneEl = document.querySelector('.leaflet-overlay-pane');
+          const paneRect = paneEl ? paneEl.getBoundingClientRect() : {left:0,top:0};
+          const wrapRect = mapWrap.getBoundingClientRect();
+          const dx = paneRect.left - wrapRect.left;
+          const dy = paneRect.top - wrapRect.top;
+          ctx.drawImage(img, dx, dy, img.naturalWidth || w, img.naturalHeight || h);
+          URL.revokeObjectURL(url);
+          resolve();
+        };
+        img.onerror = reject;
+        img.src = url;
+      });
+    }
+
+    // ④ ダウンロド
     const a = document.createElement('a');
     a.download = 'world-nuri.png';
     a.href = canvas.toDataURL('image/png');
