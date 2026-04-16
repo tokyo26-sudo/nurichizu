@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>せかい ぬりちず</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <script src="https://unpkg.com/topojson-client@3/dist/topojson-client.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -61,24 +63,21 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
 .mi-clear { font-size: 10px; color: var(--muted); cursor: pointer; padding: 1px 4px; border-radius: 3px; }
 .mi-clear:hover { background: rgba(0,0,0,.06); color: var(--accent); }
 .empty { text-align: center; padding: 24px 14px; color: var(--muted); font-size: 11px; line-height: 1.8; }
-#map-wrap { flex: 1; position: relative; overflow: hidden; background: #c8d8e8; }
+#map-wrap { flex: 1; position: relative; overflow: hidden; }
 #infobar { background: var(--panel); border-top: 1px solid var(--border); padding: 5px 14px; font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 8px; height: 28px; flex-shrink: 0; z-index: 500; white-space: nowrap; overflow: hidden; }
 #infobar .ib-label { color: var(--accent); font-weight: 700; margin-right: 2px; }
 #infobar .ib-name { color: var(--text); }
-#map-svg { width: 100%; height: 100%; cursor: grab; }
-#map-svg:active { cursor: grabbing; }
-.country-path { stroke: none; }
-.border-path { fill: none; pointer-events: none; }
+#leaflet-map { width: 100%; height: 100%; background: #c8d8e8; }
+.leaflet-overlay-pane svg { pointer-events: none; }
+.leaflet-overlay-pane svg .g-poly path { pointer-events: all; }
 .tooltip { position: absolute; pointer-events: none; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; font-size: 12px; line-height: 1.6; opacity: 0; transition: opacity .12s; z-index: 460; box-shadow: 0 4px 12px rgba(0,0,0,.1); white-space: nowrap; }
 .zoom-ctrl { position: absolute; right: 12px; bottom: 24px; display: flex; flex-direction: column; gap: 4px; z-index: 450; }
-.zoom-btn { width: 32px; height: 32px; border-radius: 6px; background: var(--panel); border: 1px solid var(--border); color: var(--text); font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .12s; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+.zoom-btn { width: 32px; height: 32px; border-radius: 6px; background: var(--panel); border: 1px solid var(--border); color: var(--text); font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .12px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
 .zoom-btn:hover { border-color: var(--accent2); color: var(--accent); }
 .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(60px); background: var(--text); color: white; padding: 8px 18px; border-radius: 20px; font-size: 12px; transition: transform .3s cubic-bezier(.34,1.56,.64,1); z-index: 9999; pointer-events: none; }
 .toast.show { transform: translateX(-50%) translateY(0); }
-#loading { position: absolute; inset: 0; background: rgba(247,244,239,.92); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 800; gap: 16px; }
-.loading-spinner { width: 48px; height: 48px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; }
-.loading-text { font-size: 14px; color: var(--text); font-weight: 700; letter-spacing: .05em; }
-.loading-sub { font-size: 11px; color: var(--muted); }
+#loading { position: absolute; inset: 0; background: rgba(247,244,239,.85); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 800; font-size: 13px; color: var(--muted); gap: 10px; }
+.spinner { width: 28px; height: 28px; border: 2.5px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .hamburger { display: none; flex-direction: column; gap: 5px; cursor: pointer; padding: 4px; background: none; border: none; }
 .hamburger span { display: block; width: 22px; height: 2px; background: var(--text); border-radius: 2px; }
@@ -90,6 +89,7 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
   aside.open { left: 0; }
   .subtitle { display: none; }
 }
+/* じどう いろかえ */
 .auto-color-slots { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 6px; align-items: center; }
 .auto-slot { width: 28px; height: 28px; border-radius: 5px; border: 2px solid var(--border); cursor: pointer; flex-shrink: 0; transition: transform .1s, border-color .1s; position: relative; }
 .auto-slot:hover { transform: scale(1.1); }
@@ -101,6 +101,7 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
 .auto-indicator { display: flex; gap: 3px; margin-top: 5px; }
 .auto-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--border); transition: background .2s; }
 .auto-dot.current { background: var(--accent); }
+/* cp popup */
 .cp-popup { display: none; position: fixed; z-index: 9999; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 10px; box-shadow: 0 4px 16px rgba(0,0,0,.15); width: 200px; }
 .cp-popup.open { display: block; }
 .cp-palette { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px; }
@@ -109,7 +110,13 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
 .cp-swatch.active { border-color: var(--text); }
 .cp-input-row { display: flex; gap: 6px; align-items: center; }
 .cp-input-row input[type=text] { flex: 1; padding: 4px 6px; border: 1px solid var(--border); border-radius: 5px; font-size: 11px; font-family: inherit; color: var(--text); background: var(--bg); outline: none; }
+.cp-input-row input[type=text]:focus { border-color: var(--accent2); }
 .cp-preview-small { width: 22px; height: 22px; border-radius: 4px; border: 1.5px solid var(--border); flex-shrink: 0; }
+/* しゅうモード UI */
+.pref-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+.pref-tag { font-size: 10px; padding: 2px 8px; border-radius: 12px; cursor: pointer; border: 1px solid var(--border); background: var(--bg); color: var(--muted); transition: all .12s; }
+.pref-tag.active { background: var(--accent); color: white; border-color: var(--accent); }
+.mode-disabled { opacity: 0.4; pointer-events: none; }
 </style>
 </head>
 <body>
@@ -117,7 +124,7 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
   <button class="hamburger" id="hamburger" onclick="toggleDrawer()"><span></span><span></span><span></span></button>
   <div class="logo">🌍</div>
   <div>
-    <div class="title">せかい ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.2.7b</span></div>
+    <div class="title">せかい ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.1.5</span></div>
     <div class="subtitle">せかいの くに・しゅう ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -130,13 +137,35 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
 <div class="map-area">
   <aside id="aside">
 
-    <!-- ちゅうしん -->
+    <!-- とうかど -->
+    <div class="sec">
+      <div class="sec-h">ちず とうかど</div>
+      <div style="margin-bottom:8px;">
+        <select class="sel" id="tile-sel" onchange="changeTile(this.value)" style="font-size:11px;">
+          <option value="osm">OpenStreetMap</option>
+          <option value="gsi">地理院タイル（標準）</option>
+          <option value="gsi_pale">地理院タイル（淡色）</option>
+        </select>
+      </div>
+      <div class="slider-row">
+        <span class="slider-label">タイル</span>
+        <input type="range" min="0" max="100" step="1" value="20" style="flex:1;accent-color:var(--accent);" oninput="setTileOpacity(this.value)">
+        <span class="slider-val" id="tile-opacity-val">20%</span>
+      </div>
+      <div class="slider-row" style="margin-top:6px;">
+        <span class="slider-label">ポリゴン</span>
+        <input type="range" min="0" max="100" step="1" value="80" style="flex:1;accent-color:var(--accent);" oninput="setPolyOpacity(this.value)">
+        <span class="slider-val" id="poly-opacity-val">80%</span>
+      </div>
+    </div>
+
+    <!-- ちゅうしん えらび -->
     <div class="sec">
       <div class="sec-h">ちず ちゅうしん</div>
-      <div style="display:flex;gap:6px;">
-        <button class="btn active" id="btn-c0"   onclick="setCenter(0)"   style="flex:1;font-size:10px;">大西洋<br>0°</button>
-        <button class="btn"        id="btn-c150" onclick="setCenter(150)" style="flex:1;font-size:10px;">太平洋<br>150°</button>
-        <button class="btn"        id="btn-c90"  onclick="setCenter(90)"  style="flex:1;font-size:10px;">インド洋<br>90°</button>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="btn active" id="btn-center-atlantic" onclick="setMapCenter(0)" style="flex:1;font-size:10px;">大西洋<br>中心</button>
+        <button class="btn" id="btn-center-pacific" onclick="setMapCenter(150)" style="flex:1;font-size:10px;">太平洋<br>中心</button>
+        <button class="btn" id="btn-center-indian" onclick="setMapCenter(90)" style="flex:1;font-size:10px;">インド洋<br>中心</button>
       </div>
     </div>
 
@@ -146,6 +175,17 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
       <div style="display:flex;gap:6px;">
         <button class="btn active" id="btn-mode-country" onclick="setPaintMode('country')" style="flex:1;">🌍 くに</button>
         <button class="btn" id="btn-mode-province" onclick="setPaintMode('province')" style="flex:1;font-size:10px;">🗺️ しゅう<br><span style="font-size:9px;opacity:0.7;">じゅんびちゅう</span></button>
+      </div>
+      <!-- しゅうモード UI（じゅんびちゅう グレーアウト） -->
+      <div id="province-ui" class="mode-disabled" style="margin-top:8px;">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:4px;">しゅうデータ ある くに えらぶ</div>
+        <div style="display:flex;gap:4px;">
+          <select class="sel" id="province-country-sel" style="flex:1;font-size:11px;">
+            <option value="">── くに えらぶ ──</option>
+          </select>
+          <button class="btn" style="margin-top:0;width:auto;padding:4px 8px;flex-shrink:0;" onclick="addProvinceLayer()">＋</button>
+        </div>
+        <div class="pref-tags" id="province-tags"></div>
       </div>
     </div>
 
@@ -163,7 +203,7 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
       </div>
     </div>
 
-    <!-- いろ -->
+    <!-- いろえらび -->
     <div class="sec">
       <div class="sec-h">ぬる いろ</div>
       <div class="color-row">
@@ -185,7 +225,7 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
       </div>
       <div style="display:flex;flex-direction:column;gap:7px;" id="border-detail">
         <div class="color-row">
-          <div class="color-preview" id="borderPreview" style="background:#888888;cursor:pointer;" onclick="openColorPopup('borderPreview', borderColor, c=>setBorderColor(c))"></div>
+          <div class="color-preview" id="borderPreview" style="background:#888888;cursor:pointer;" onclick="openColorPopup('borderPreview', borderColor, c => setBorderColor(c))"></div>
           <span style="font-size:12px;color:var(--muted);">いろ</span>
         </div>
         <div class="slider-row">
@@ -196,16 +236,16 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
       </div>
     </div>
 
-    <!-- はいけい -->
+    <!-- はいけい いろ -->
     <div class="sec">
       <div class="sec-h">はいけい いろ</div>
       <div style="display:flex;flex-direction:column;gap:7px;">
         <div class="color-row">
-          <div class="color-preview" id="landColorPreview" style="background:#dcd2c8;cursor:pointer;" onclick="openColorPopup('landColorPreview', landColor, c=>setLandColor(c))"></div>
+          <div class="color-preview" id="landColorPreview" style="background:#dcd2c8;cursor:pointer;" onclick="openColorPopup('landColorPreview', landColor, c => setLandColor(c))"></div>
           <span style="font-size:12px;color:var(--muted);">りく いろ</span>
         </div>
         <div class="color-row">
-          <div class="color-preview" id="seaColorPreview" style="background:#c8d8e8;cursor:pointer;" onclick="openColorPopup('seaColorPreview', seaColor, c=>setSeaColor(c))"></div>
+          <div class="color-preview" id="seaColorPreview" style="background:#c8d8e8;cursor:pointer;" onclick="openColorPopup('seaColorPreview', seaColor, c => setSeaColor(c))"></div>
           <span style="font-size:12px;color:var(--muted);">うみ いろ</span>
         </div>
       </div>
@@ -226,29 +266,21 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
       <button class="btn primary" onclick="capturePNG()">📷 PNG で ほぞん</button>
     </div>
 
-    <!-- リスト -->
+    <!-- ぬった リスト -->
     <div class="mlist-wrap">
       <div class="empty" id="mlist-empty">クリックして<br>くにを<br>ぬってみよう！</div>
       <div id="mlist"></div>
     </div>
-  </aside>
 
+  </aside>
   <div id="map-wrap">
-    <div id="loading">
-      <div class="loading-spinner"></div>
-      <div class="loading-text">よみこみちゅう…</div>
-      <div class="loading-sub">せかいの くにデータを よみこんでいるヨ、すこし まてネ</div>
-    </div>
-    <svg id="map-svg">
-      <rect id="sea-rect" width="100%" height="100%" fill="#c8d8e8"/>
-      <g id="g-countries"></g>
-      <g id="g-borders"></g>
-    </svg>
+    <div id="loading"><div class="spinner"></div>データ よみこみちゅう…</div>
+    <div id="leaflet-map"></div>
     <div id="tooltip" class="tooltip"></div>
     <div class="zoom-ctrl">
-      <button class="zoom-btn" onclick="zoomBy(1.3)">＋</button>
-      <button class="zoom-btn" onclick="resetView()">⌂</button>
-      <button class="zoom-btn" onclick="zoomBy(1/1.3)">－</button>
+      <button class="zoom-btn" onclick="lmap.zoomIn()">＋</button>
+      <button class="zoom-btn" onclick="lmap.setView([20,0],2)">⌂</button>
+      <button class="zoom-btn" onclick="lmap.zoomOut()">－</button>
     </div>
   </div>
 </div>
@@ -258,7 +290,7 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
 
 <script>
 // =====================================================
-// パレット
+// パレット・いろ
 // =====================================================
 const PRESET_COLORS = [
   '#e05030','#e08030','#d4b020','#60a840','#20a070',
@@ -271,469 +303,525 @@ const PRESET_COLORS = [
   '#ffffff','#1a1a1a',
 ];
 let currentColor = '#e05030';
+
+// =====================================================
+// じどう いろかえ
+// =====================================================
 let autoColorEnabled = false;
 let autoColorSlots = ['#e05030','#2080c0','#60a840','#d4b020'];
 let autoColorIndex = 0;
 
 function toggleAutoColor(on) {
   autoColorEnabled = on;
-  const d = document.getElementById('auto-color-detail');
-  d.style.opacity = on?'1':'0.4'; d.style.pointerEvents = on?'auto':'none';
-  if (on) { autoColorIndex=0; setCurrentColor(autoColorSlots[0]); }
+  const detail = document.getElementById('auto-color-detail');
+  detail.style.opacity = on ? '1' : '0.4';
+  detail.style.pointerEvents = on ? 'auto' : 'none';
+  if (on) { autoColorIndex = 0; setCurrentColor(autoColorSlots[0]); }
   renderAutoSlots();
 }
 function renderAutoSlots() {
   const wrap = document.getElementById('auto-color-slots');
   const ind  = document.getElementById('auto-indicator');
-  wrap.innerHTML=''; ind.innerHTML='';
-  autoColorSlots.forEach((c,i) => {
+  wrap.innerHTML = ''; ind.innerHTML = '';
+  autoColorSlots.forEach((c, i) => {
     const slot = document.createElement('div');
-    slot.className='auto-slot'+(i===autoColorIndex?' current':'');
-    slot.style.background=c;
-    slot.onclick=e=>{e.stopPropagation();openColorPopupFromEl(slot,c,nc=>{autoColorSlots[i]=nc;if(autoColorEnabled&&i===autoColorIndex)setCurrentColor(nc);renderAutoSlots();});};
-    if(autoColorSlots.length>2){const del=document.createElement('div');del.className='auto-slot-del';del.textContent='×';del.onclick=e=>{e.stopPropagation();autoColorSlots.splice(i,1);if(autoColorIndex>=autoColorSlots.length)autoColorIndex=0;if(autoColorEnabled)setCurrentColor(autoColorSlots[autoColorIndex]);renderAutoSlots();};slot.appendChild(del);}
+    slot.className = 'auto-slot' + (i === autoColorIndex ? ' current' : '');
+    slot.style.background = c;
+    slot.onclick = e => { e.stopPropagation(); openColorPopupFromEl(slot, c, nc => { autoColorSlots[i]=nc; if(autoColorEnabled&&i===autoColorIndex)setCurrentColor(nc); renderAutoSlots(); }); };
+    if (autoColorSlots.length > 2) {
+      const del = document.createElement('div'); del.className='auto-slot-del'; del.textContent='×';
+      del.onclick = e => { e.stopPropagation(); autoColorSlots.splice(i,1); if(autoColorIndex>=autoColorSlots.length)autoColorIndex=0; if(autoColorEnabled)setCurrentColor(autoColorSlots[autoColorIndex]); renderAutoSlots(); };
+      slot.appendChild(del);
+    }
     wrap.appendChild(slot);
-    const dot=document.createElement('div');dot.className='auto-dot'+(i===autoColorIndex?' current':'');ind.appendChild(dot);
+    const dot = document.createElement('div'); dot.className='auto-dot'+(i===autoColorIndex?' current':''); ind.appendChild(dot);
   });
-  const ed=document.createElement('div');ed.className='auto-dot'+(autoColorIndex>=autoColorSlots.length?' current':'');
-  ed.style.cssText='font-size:8px;width:auto;height:auto;background:none;display:flex;align-items:center;';ed.textContent='🗑';ind.appendChild(ed);
-  if(autoColorSlots.length<5){const a=document.createElement('button');a.className='auto-add-btn';a.textContent='+';a.onclick=()=>{autoColorSlots.push(shiftHue(autoColorSlots[autoColorSlots.length-1],60));renderAutoSlots();};wrap.appendChild(a);}
+  const eraseDot = document.createElement('div');
+  eraseDot.className='auto-dot'+(autoColorIndex>=autoColorSlots.length?' current':'');
+  eraseDot.style.cssText='font-size:8px;width:auto;height:auto;background:none;display:flex;align-items:center;';
+  eraseDot.textContent='🗑'; ind.appendChild(eraseDot);
+  if (autoColorSlots.length < 5) {
+    const add = document.createElement('button'); add.className='auto-add-btn'; add.textContent='+';
+    add.onclick = () => { autoColorSlots.push(shiftHue(autoColorSlots[autoColorSlots.length-1],60)); renderAutoSlots(); };
+    wrap.appendChild(add);
+  }
 }
 function advanceAutoColor() {
-  if(!autoColorEnabled)return;
-  autoColorIndex=(autoColorIndex+1)%(autoColorSlots.length+1);
-  if(autoColorIndex<autoColorSlots.length)setCurrentColor(autoColorSlots[autoColorIndex]);
+  if (!autoColorEnabled) return;
+  autoColorIndex = (autoColorIndex+1) % (autoColorSlots.length+1);
+  if (autoColorIndex < autoColorSlots.length) setCurrentColor(autoColorSlots[autoColorIndex]);
   renderAutoSlots();
 }
-function shiftHue(hex,deg){
-  let r=parseInt(hex.slice(1,3),16)/255,g=parseInt(hex.slice(3,5),16)/255,b=parseInt(hex.slice(5,7),16)/255;
-  const max=Math.max(r,g,b),min=Math.min(r,g,b),d=max-min;
-  let h=0,s=max===0?0:d/max,v=max;
+function shiftHue(hex, deg) {
+  let r=parseInt(hex.slice(1,3),16)/255, g=parseInt(hex.slice(3,5),16)/255, b=parseInt(hex.slice(5,7),16)/255;
+  const max=Math.max(r,g,b), min=Math.min(r,g,b), d=max-min;
+  let h=0, s=max===0?0:d/max, v=max;
   if(d>0){if(max===r)h=((g-b)/d+6)%6;else if(max===g)h=(b-r)/d+2;else h=(r-g)/d+4;h*=60;}
-  h=(h+deg)%360;const c2=v*s,x=c2*(1-Math.abs((h/60)%2-1)),m=v-c2;
-  let rr,gg,bb;if(h<60){rr=c2;gg=x;bb=0;}else if(h<120){rr=x;gg=c2;bb=0;}else if(h<180){rr=0;gg=c2;bb=x;}else if(h<240){rr=0;gg=x;bb=c2;}else if(h<300){rr=x;gg=0;bb=c2;}else{rr=c2;gg=0;bb=x;}
+  h=(h+deg)%360;
+  const c2=v*s, x=c2*(1-Math.abs((h/60)%2-1)), m=v-c2;
+  let rr,gg,bb;
+  if(h<60){rr=c2;gg=x;bb=0;}else if(h<120){rr=x;gg=c2;bb=0;}else if(h<180){rr=0;gg=c2;bb=x;}
+  else if(h<240){rr=0;gg=x;bb=c2;}else if(h<300){rr=x;gg=0;bb=c2;}else{rr=c2;gg=0;bb=x;}
   const toHex=n=>Math.round((n+m)*255).toString(16).padStart(2,'0');
   return '#'+toHex(rr)+toHex(gg)+toHex(bb);
 }
-function initPalette(){
-  const pal=document.getElementById('palette');
-  PRESET_COLORS.forEach(c=>{const sw=document.createElement('div');sw.className='swatch'+(c===currentColor?' active':'');sw.style.background=c;sw.title=c;sw.onclick=()=>setCurrentColor(c);pal.appendChild(sw);});
+
+function initPalette() {
+  const pal = document.getElementById('palette');
+  PRESET_COLORS.forEach(c => {
+    const sw = document.createElement('div');
+    sw.className = 'swatch'+(c===currentColor?' active':''); sw.style.background=c; sw.title=c;
+    sw.onclick = () => setCurrentColor(c); pal.appendChild(sw);
+  });
   renderAutoSlots();
 }
-function setCurrentColor(c){
-  currentColor=c;
-  document.getElementById('colorPreview').style.background=c;
-  document.getElementById('colorHex').textContent=c;
-  document.getElementById('colorPicker').value=c;
-  document.querySelectorAll('.swatch').forEach(sw=>sw.classList.toggle('active',sw.title===c));
+function setCurrentColor(c) {
+  currentColor = c;
+  document.getElementById('colorPreview').style.background = c;
+  document.getElementById('colorHex').textContent = c;
+  document.getElementById('colorPicker').value = c;
+  document.querySelectorAll('.swatch').forEach(sw => sw.classList.toggle('active', sw.title===c));
 }
 
 // =====================================================
 // カラポップアップ
 // =====================================================
-let cpCallback=null;
-function openColorPopup(anchorId,currentVal,callback){
-  const ex=document.getElementById('cp-popup-global');if(ex)ex.remove();
-  cpCallback=callback;const anchor=document.getElementById(anchorId);
-  const popup=buildCpPopup(currentVal);document.body.appendChild(popup);
-  const r=anchor.getBoundingClientRect();popup.style.top=(r.bottom+4)+'px';popup.style.left=r.left+'px';
-  setTimeout(()=>{document.addEventListener('click',function h(e){if(!popup.contains(e.target)&&e.target!==anchor){popup.remove();document.removeEventListener('click',h);}});},0);
+let cpCallback = null;
+function openColorPopup(anchorId, currentVal, callback) {
+  const existing = document.getElementById('cp-popup-global'); if(existing)existing.remove();
+  cpCallback = callback;
+  const anchor = document.getElementById(anchorId);
+  const popup = buildCpPopup(currentVal);
+  document.body.appendChild(popup);
+  const rect = anchor.getBoundingClientRect();
+  popup.style.cssText += `top:${rect.bottom+4}px;left:${rect.left}px;`;
+  setTimeout(() => { document.addEventListener('click', function h(e){if(!popup.contains(e.target)&&e.target!==anchor){popup.remove();document.removeEventListener('click',h);}}); },0);
 }
-function openColorPopupFromEl(el,currentVal,callback){
-  const ex=document.getElementById('cp-popup-global');if(ex)ex.remove();
-  cpCallback=callback;const popup=buildCpPopup(currentVal);document.body.appendChild(popup);
-  const r=el.getBoundingClientRect();popup.style.top=(r.bottom+4)+'px';popup.style.left=r.left+'px';
-  setTimeout(()=>{document.addEventListener('click',function h(e){if(!popup.contains(e.target)&&e.target!==el){popup.remove();document.removeEventListener('click',h);}});},0);
+function openColorPopupFromEl(anchorEl, currentVal, callback) {
+  const existing = document.getElementById('cp-popup-global'); if(existing)existing.remove();
+  cpCallback = callback;
+  const popup = buildCpPopup(currentVal);
+  document.body.appendChild(popup);
+  const rect = anchorEl.getBoundingClientRect();
+  popup.style.cssText += `top:${rect.bottom+4}px;left:${rect.left}px;`;
+  setTimeout(() => { document.addEventListener('click', function h(e){if(!popup.contains(e.target)&&e.target!==anchorEl){popup.remove();document.removeEventListener('click',h);}}); },0);
 }
-function buildCpPopup(currentVal){
-  const popup=document.createElement('div');popup.id='cp-popup-global';popup.className='cp-popup open';popup.style.position='fixed';popup.style.zIndex='9999';
-  const pal=document.createElement('div');pal.className='cp-palette';
-  PRESET_COLORS.forEach(c=>{const sw=document.createElement('div');sw.className='cp-swatch'+(c===currentVal?' active':'');sw.style.background=c;sw.onclick=()=>{cpCallback(c);popup.remove();};pal.appendChild(sw);});
+function buildCpPopup(currentVal) {
+  const popup = document.createElement('div'); popup.id='cp-popup-global'; popup.className='cp-popup open';
+  popup.style.position='fixed'; popup.style.zIndex='9999';
+  const pal = document.createElement('div'); pal.className='cp-palette';
+  PRESET_COLORS.forEach(c => {
+    const sw = document.createElement('div'); sw.className='cp-swatch'+(c===currentVal?' active':''); sw.style.background=c;
+    sw.onclick = () => { cpCallback(c); popup.remove(); }; pal.appendChild(sw);
+  });
   popup.appendChild(pal);
-  const row=document.createElement('div');row.className='cp-input-row';
-  const prev=document.createElement('div');prev.className='cp-preview-small';prev.style.background=currentVal;
-  const inp=document.createElement('input');inp.type='text';inp.value=currentVal;inp.placeholder='#rrggbb';
-  inp.oninput=()=>{const v=inp.value.trim();if(/^#[0-9a-fA-F]{6}$/.test(v)){prev.style.background=v;cpCallback(v);}};
-  inp.onkeydown=e=>{if(e.key==='Enter')popup.remove();};
-  row.appendChild(prev);row.appendChild(inp);popup.appendChild(row);
+  const row = document.createElement('div'); row.className='cp-input-row';
+  const prev = document.createElement('div'); prev.className='cp-preview-small'; prev.style.background=currentVal;
+  const inp = document.createElement('input'); inp.type='text'; inp.value=currentVal; inp.placeholder='#rrggbb';
+  inp.oninput = () => { const v=inp.value.trim(); if(/^#[0-9a-fA-F]{6}$/.test(v)){prev.style.background=v;cpCallback(v);} };
+  inp.onkeydown = e => { if(e.key==='Enter')popup.remove(); };
+  row.appendChild(prev); row.appendChild(inp); popup.appendChild(row);
   return popup;
 }
 
 // =====================================================
 // スポイト
 // =====================================================
-let eyedropperMode=false;
-function toggleEyedropper(){
-  eyedropperMode=!eyedropperMode;
-  document.getElementById('btn-eyedropper').classList.toggle('active',eyedropperMode);
-  document.getElementById('map-svg').style.cursor=eyedropperMode?'crosshair':'grab';
+let eyedropperMode = false;
+function toggleEyedropper() {
+  eyedropperMode = !eyedropperMode;
+  document.getElementById('btn-eyedropper').classList.toggle('active', eyedropperMode);
+  document.getElementById('map-wrap').style.cursor = eyedropperMode ? 'crosshair' : '';
 }
 
 // =====================================================
 // ぬりモード
 // =====================================================
-let paintMode='country';
-function setPaintMode(mode){
-  if(mode==='province'){toast('しゅうモードは じゅんびちゅうデスヨ！');return;}
-  paintMode=mode;
-  document.getElementById('btn-mode-country').classList.toggle('active',mode==='country');
-  document.getElementById('btn-mode-province').classList.toggle('active',mode==='province');
+// paintMode: 'country' | 'province'（しょうらいようのうち）
+let paintMode = 'country';
+
+function setPaintMode(mode) {
+  if (mode === 'province') { toast('しゅうモードは じゅんびちゅうデスヨ！'); return; }
+  paintMode = mode;
+  document.getElementById('btn-mode-country').classList.toggle('active', mode==='country');
+  document.getElementById('btn-mode-province').classList.toggle('active', mode==='province');
 }
 
+// しゅうモード（しょうらいよう のこ）
+function addProvinceLayer() { toast('しゅうモードは じゅんびちゅうデスヨ！'); }
+
 // =====================================================
-// D3 せっていと マップ
+// データ
 // =====================================================
-let paintMap = new Map();
-let countryFeatures = [];
-let countryTopo = null;
+let paintMap = new Map(); // uid → color
+let countryFeatures = []; // くにポリゴン
 let landColor = '#dcd2c8', seaColor = '#c8d8e8';
 let borderColor = '#888888', borderWidth = 0.5, borderOn = true;
-let currentCenterLng = 0;
 
-// D3 projection（geoNaturalEarth1 or geoMercator）
-let projection, pathGen, svgSel, gCountries, gBorders;
-let currentTransform = d3.zoomIdentity;
-
-function getCountryId(f){
-  if (!f) return '';
-  // world-atlasのf.idはすでに文字列3桁コード
-  if (f.id !== undefined && f.id !== null) return String(f.id);
-  return '';
-}
-function getCountryName(f){
+// くに の UID は ISO_A3 コード
+function getCountryId(f) {
   const p = f.properties || {};
-  // まずCOUNTRY_NAMESから日本語名を探す
-  const id = getCountryId(f);
-  if (id && COUNTRY_NAMES[id]) return COUNTRY_NAMES[id];
-  // なければプロパティのname（英語）
-  return p.NAME || p.name || p.ADMIN || p.admin || id || '';
+  return p.ISO_A3 || p.iso_a3 || p.ADM0_A3 || p.id || String(p.id||'');
+}
+function getCountryName(f) {
+  const p = f.properties || {};
+  return p.NAME || p.name || p.ADMIN || p.admin || '';
 }
 
-function initD3Map(){
-  const wrap = document.getElementById('map-wrap');
-  svgSel = d3.select('#map-svg');
-  gCountries = d3.select('#g-countries');
-  gBorders   = d3.select('#g-borders');
+// =====================================================
+// タイル
+// =====================================================
+const TILE_URLS = {
+  osm:      'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+  gsi:      'https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png',
+  gsi_pale: 'https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png',
+};
+const TILE_ATTRS = {
+  osm:      '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  gsi:      '© <a href="https://maps.gsi.go.jp/development/ichiran.html">地理院タイル</a>',
+  gsi_pale: '© <a href="https://maps.gsi.go.jp/development/ichiran.html">地理院タイル</a>',
+};
+function changeTile(key) {
+  if (tileLayer) lmap.removeLayer(tileLayer);
+  const opacity = parseFloat(document.getElementById('tile-opacity-val').textContent)/100;
+  tileLayer = L.tileLayer(TILE_URLS[key], { attribution: TILE_ATTRS[key], maxZoom:18, opacity }).addTo(lmap);
+}
+function setTileOpacity(v) { document.getElementById('tile-opacity-val').textContent=v+'%'; if(tileLayer)tileLayer.setOpacity(v/100); }
+function setPolyOpacity(v) { document.getElementById('poly-opacity-val').textContent=v+'%'; gPoly && gPoly.style('opacity',v/100); }
 
-  // D3 zoom - ポリゴン上のクリックはzoomに渡さない
-  // SVG要素のclassNameはSVGAnimatedStringなのでgetAttributeで判定する
-  const zoom = d3.zoom()
-    .scaleExtent([0.5, 20])
-    .filter(event => {
-      const cls = event.target && event.target.getAttribute ? event.target.getAttribute('class') : '';
-      if (cls && cls.includes('country-path')) {
-        return event.type === 'wheel' || event.type === 'touchstart';
-      }
-      return !event.button;
-    })
-    .on('zoom', (event) => {
-      currentTransform = event.transform;
-      gCountries.attr('transform', currentTransform);
-      gBorders.attr('transform', currentTransform);
-    });
-  svgSel.call(zoom);
+function setBorderColor(c) { borderColor=c; document.getElementById('borderPreview').style.background=c; redrawBorders(); }
+function setBorderWidth(v) { borderWidth=parseFloat(v); document.getElementById('border-width-val').textContent=v; redrawBorders(); }
+function toggleBorder(on) { borderOn=on; document.getElementById('border-detail').style.opacity=on?'1':'0.4'; gBorder&&gBorder.style('display',on?null:'none'); }
+function setLandColor(c) {
+  landColor=c; document.getElementById('landColorPreview').style.background=c;
+  gPoly&&gPoly.selectAll('path').each(function(d){if(!paintMap.has(getCountryId(d)))d3.select(this).attr('fill',landColor);});
+}
+function setSeaColor(c) { seaColor=c; document.getElementById('seaColorPreview').style.background=c; document.querySelector('#leaflet-map').style.backgroundColor=c; }
 
-  // ダブルクリックズームを無効化
-  svgSel.on('dblclick.zoom', null);
+// =====================================================
+// Leaflet + D3
+// =====================================================
+let lmap, tileLayer, svgOverlay, gPoly, gBorder;
 
-  buildProjection();
+// D3 geoPath（アンチメリジアン・きょくちほう ぜんぶ D3に まかせる）
+let d3Projection, d3Path;
+
+function setMapCenter(lng) {
+  lmap.setView([20, lng], lmap.getZoom());
+  document.getElementById('btn-center-atlantic').classList.toggle('active', lng===0);
+  document.getElementById('btn-center-pacific').classList.toggle('active', lng===150);
+  document.getElementById('btn-center-indian').classList.toggle('active', lng===90);
 }
 
-function buildProjection(){
-  const wrap = document.getElementById('map-wrap');
-  const W = wrap.clientWidth, H = wrap.clientHeight;
+function initMap() {
+  lmap = L.map('leaflet-map', { center:[20,0], zoom:2, zoomControl:false });
+  tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    maxZoom:18, opacity:0.2,
+  }).addTo(lmap);
+  const svgLayer = L.svg({padding:0}).addTo(lmap);
+  svgOverlay = d3.select(svgLayer._container);
+  gPoly   = svgOverlay.append('g').attr('class','g-poly');
+  gBorder = svgOverlay.append('g').attr('class','g-border');
+  // D3 projection を はじめに つくる
+  updateProjection();
+  lmap.on('zoom move zoomend moveend', updateSvgOverlay);
+}
 
-  // geoMercator デフォルトで scale=153, translate=[480,250]
-  // W/H にあわせて スケールする
-  const scale = Math.min(W, H * 1.6) / 5.5;
-  // ちゅうしん経度は rotate で かいてん（translate は がめん ちゅうおう）
-  projection = d3.geoMercator()
-    .rotate([-currentCenterLng, 0])
+// Leaflet の ズーム・パンに あわせて D3 projection を こうしん
+function updateProjection() {
+  // Leaflet の zoom レベルから D3 の scale を もとめる
+  // Leaflet zoom=0 で 256px タイル → D3 geoMercator の scale=256/(2π)
+  const zoom = lmap.getZoom();
+  const scale = (256 / (2 * Math.PI)) * Math.pow(2, zoom);
+  // 経度0度・緯度0度の スクリーン ざひょう を つかって translate を もとめる
+  const origin = lmap.latLngToLayerPoint(L.latLng(0, 0));
+  d3Projection = d3.geoMercator()
     .scale(scale)
-    .translate([W / 2, H / 2 + H * 0.05]);
-
-  pathGen = d3.geoPath().projection(projection);
+    .translate([origin.x, origin.y]);
+  d3Path = d3.geoPath().projection(d3Projection);
 }
 
-function resetView(){
-  const wrap = document.getElementById('map-wrap');
-  const W = wrap.clientWidth, H = wrap.clientHeight;
-  buildProjection();
-  currentTransform = d3.zoomIdentity;
-  svgSel.transition().duration(400).call(
-    d3.zoom().transform, d3.zoomIdentity
-  );
-  gCountries.attr('transform', d3.zoomIdentity);
-  gBorders.attr('transform', d3.zoomIdentity);
-  redrawAll();
+function geoPathFn(feature) {
+  if (!d3Path || !feature || !feature.geometry) return '';
+  return d3Path(feature) || '';
 }
 
-function zoomBy(factor){
-  const wrap = document.getElementById('map-wrap');
-  const W = wrap.clientWidth, H = wrap.clientHeight;
-  svgSel.transition().duration(250).call(
-    d3.zoom().scaleBy, factor
-  );
-}
-
-function setCenter(lng){
-  currentCenterLng = lng;
-  document.getElementById('btn-c0').classList.toggle('active', lng===0);
-  document.getElementById('btn-c150').classList.toggle('active', lng===150);
-  document.getElementById('btn-c90').classList.toggle('active', lng===90);
-  resetView();
-}
-
-function redrawAll(){
-  if(!countryFeatures.length) return;
-  // いちど ぜんぶ けして つくりなおす（クロージャバグ かいひ）
-  gCountries.selectAll('.country-path').remove();
-
-  gCountries.selectAll('.country-path')
-    .data(countryFeatures)
-    .enter().append('path')
-    .attr('class','country-path')
-    .attr('d', d => pathGen(d) || '')
-    .attr('fill', d => paintMap.get(getCountryId(d)) || landColor)
-    .attr('stroke', 'none')
-    .style('cursor','pointer')
-    .on('mouseover', function(ev, d){
-      const name=getCountryName(d), id=getCountryId(d), color=paintMap.get(id);
-      showTip(ev,`${name}${color?' ('+color+')':''}`);
-      updateInfobar(name);
-    })
-    .on('mousemove', ev=>moveTip(ev))
-    .on('mouseout', ()=>{hideTip();updateInfobar('──');})
-    .on('click', function(ev, d){
-      ev.stopPropagation();
-      const id=getCountryId(d); if(!id)return;
-      if(eyedropperMode){
-        const col=paintMap.get(id);
-        if(col){setCurrentColor(col);toast('いろ すいとたヨ！ '+col);}
-        eyedropperMode=false;document.getElementById('btn-eyedropper').classList.remove('active');document.getElementById('map-svg').style.cursor='grab';
-        return;
-      }
-      const isEraseStep=autoColorEnabled&&autoColorIndex>=autoColorSlots.length;
-      if(isEraseStep){paintMap.delete(id);d3.select(this).attr('fill',landColor);updateSidebar();updateStats();advanceAutoColor();return;}
-      const alreadySame=paintMap.get(id)===currentColor;
-      if(alreadySame){paintMap.delete(id);d3.select(this).attr('fill',landColor);}
-      else{paintMap.set(id,currentColor);d3.select(this).attr('fill',currentColor);}
-      updateSidebar();updateStats();
-      if(!alreadySame)advanceAutoColor();
-    });
-
+function updateSvgOverlay() {
+  if (!countryFeatures.length) return;
+  updateProjection();
+  gPoly.selectAll('path').each(function(d){ d3.select(this).attr('d', geoPathFn(d)); });
   redrawBorders();
 }
 
-function redrawBorders(){
-  gBorders.selectAll('*').remove();
-  if(!borderOn||borderWidth<=0||!countryTopo||!pathGen)return;
-  try{
-    const mesh=topojson.mesh(countryTopo,countryTopo.objects.countries,(a,b)=>a!==b);
-    gBorders.append('path')
-      .attr('class','border-path')
-      .attr('d',pathGen(mesh)||'')
-      .attr('stroke',borderColor)
-      .attr('stroke-width',borderWidth);
-  }catch(e){}
+// =====================================================
+// ちず えがく
+// =====================================================
+function buildMap() {
+  if (!countryFeatures.length) return;
+  gPoly.selectAll('path').remove();
+  gPoly.selectAll('path')
+    .data(countryFeatures)
+    .enter().append('path')
+    .attr('d', d => geoPathFn(d))
+    .attr('fill', d => paintMap.get(getCountryId(d)) || landColor)
+    .attr('stroke', 'none')
+    .style('cursor','pointer')
+    .on('mouseover', function(ev, d) {
+      const name = getCountryName(d);
+      const id = getCountryId(d);
+      const color = paintMap.get(id);
+      showTip(ev, `${name}${color?' ('+color+')':''}`);
+      updateInfobar(name);
+    })
+    .on('mousemove', ev => moveTip(ev))
+    .on('mouseout', () => { hideTip(); updateInfobar('──'); })
+    .on('click', function(ev, d) {
+      if (ev&&ev.stopPropagation) ev.stopPropagation();
+      const id = getCountryId(d);
+      if (!id) return;
+
+      if (eyedropperMode) {
+        const col = paintMap.get(id);
+        if (col) { setCurrentColor(col); toast('いろ すいとたヨ！ '+col); }
+        eyedropperMode = false;
+        document.getElementById('btn-eyedropper').classList.remove('active');
+        document.getElementById('map-wrap').style.cursor = '';
+        return;
+      }
+
+      const isEraseStep = autoColorEnabled && autoColorIndex >= autoColorSlots.length;
+      if (isEraseStep) {
+        paintMap.delete(id);
+        d3.select(this).attr('fill', landColor);
+        updateSidebar(); updateStats(); advanceAutoColor();
+        return;
+      }
+
+      const alreadySame = paintMap.get(id) === currentColor;
+      if (alreadySame) {
+        paintMap.delete(id);
+        d3.select(this).attr('fill', landColor);
+      } else {
+        paintMap.set(id, currentColor);
+        d3.select(this).attr('fill', currentColor);
+      }
+      updateSidebar(); updateStats();
+      if (!alreadySame) advanceAutoColor();
+    });
+  redrawBorders();
+  document.getElementById('loading').style.display = 'none';
 }
 
 // =====================================================
-// はいけい・さかいせん
+// さかいせん
 // =====================================================
-function setBorderColor(c){borderColor=c;document.getElementById('borderPreview').style.background=c;redrawBorders();}
-function setBorderWidth(v){borderWidth=parseFloat(v);document.getElementById('border-width-val').textContent=v;redrawBorders();}
-function toggleBorder(on){borderOn=on;document.getElementById('border-detail').style.opacity=on?'1':'0.4';redrawBorders();}
-function setLandColor(c){
-  landColor=c;document.getElementById('landColorPreview').style.background=c;
-  gCountries.selectAll('.country-path').each(function(d){if(!paintMap.has(getCountryId(d)))d3.select(this).attr('fill',landColor);});
+function redrawBorders() {
+  gBorder.selectAll('path').remove();
+  if (!borderOn || borderWidth<=0 || !countryTopo || !d3Path) return;
+  try {
+    const mesh = topojson.mesh(countryTopo, countryTopo.objects.countries, (a,b)=>a!==b);
+    const d = d3Path(mesh);
+    if (!d) return;
+    gBorder.append('path').attr('d',d).attr('fill','none')
+      .attr('stroke',borderColor).attr('stroke-width',borderWidth)
+      .attr('stroke-linejoin','round').attr('stroke-linecap','round')
+      .style('pointer-events','none');
+  } catch(e) {}
 }
-function setSeaColor(c){seaColor=c;document.getElementById('seaColorPreview').style.background=c;document.getElementById('sea-rect').setAttribute('fill',c);document.getElementById('map-wrap').style.background=c;}
 
 // =====================================================
-// データよみこみ
+// データ よみこみ
 // =====================================================
-async function loadCountryData(){
-  const res=await fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-10m.json');
-  if(!res.ok)throw new Error('データ よみこみ しっぱい');
-  const topo=await res.json();
-  countryTopo=topo;
-  const fc=topojson.feature(topo,topo.objects.countries);
-  countryFeatures=fc.features;
-  // f.idはすでに文字列3桁コードなのでそのままつかう
-  countryFeatures.forEach(f=>{
-    f.properties = f.properties || {};
+let countryTopo = null;
+
+async function loadCountryData() {
+  // world-atlas CDN（50m = てきど な かいぞうど）
+  const url = 'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json';
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('データ よみこみ しっぱい');
+  const topo = await res.json();
+  countryTopo = topo;
+  // くに の properties は ISO コドだけなので、べつの データで なまえ ほかん
+  const nameUrl = 'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json';
+  // topojson.feature で GeoJSON に へんかん
+  const fc = topojson.feature(topo, topo.objects.countries);
+  // くに めい は ISO コドから ひく（world-atlasは nameが ない）
+  // なので べつの なまえ マップを つかう
+  countryFeatures = fc.features;
+  // なまえ を properties に いれる
+  countryFeatures.forEach(f => {
     const id = String(f.id || '');
-    f.properties._id = id;
+    f.properties = f.properties || {};
+    f.properties.ISO_A3 = id;
+    f.properties.NAME = COUNTRY_NAMES[id] || id;
   });
 }
 
-const COUNTRY_NAMES={
-  "004":"アフガニスタン","008":"アルバニア","012":"アルジェリア","016":"アメリカ領サモア",
-  "020":"アンドラ","024":"アンゴラ","028":"アンティグア・バーブーダ","032":"アルゼンチン",
-  "031":"アゼルバイジャン","036":"オーストラリア","040":"オーストリア","044":"バハマ",
-  "048":"バーレーン","050":"バングラデシュ","052":"バルバドス","056":"ベルギー",
-  "060":"バミューダ","064":"ブータン","068":"ボリビア","070":"ボスニア・ヘルツェゴビナ",
-  "072":"ボツワナ","076":"ブラジル","084":"ベリーズ","086":"英領インド洋地域",
-  "090":"ソロモン諸島","096":"ブルネイ","100":"ブルガリア","104":"ミャンマー",
-  "108":"ブルンジ","112":"ベラルーシ","116":"カンボジア","120":"カメルーン",
-  "124":"カナダ","132":"カーボベルデ","136":"ケイマン諸島","140":"中央アフリカ共和国",
-  "144":"スリランカ","148":"チャド","152":"チリ","156":"中国",
-  "158":"台湾","162":"クリスマス島","166":"ココス諸島","170":"コロンビア",
-  "174":"コモロ","175":"マヨット","178":"コンゴ共和国","180":"コンゴ民主共和国",
-  "184":"クック諸島","188":"コスタリカ","191":"クロアチア","192":"キューバ",
-  "196":"キプロス","203":"チェコ","204":"ベナン","208":"デンマーク",
-  "212":"ドミニカ","214":"ドミニカ共和国","218":"エクアドル","231":"エチオピア",
-  "232":"エリトリア","233":"エストニア","238":"フォークランド諸島","242":"フィジー",
-  "246":"フィンランド","248":"オーランド諸島","250":"フランス","266":"ガボン",
-  "268":"ジョージア","270":"ガンビア","275":"パレスチナ","276":"ドイツ",
-  "288":"ガーナ","292":"ジブラルタル","300":"ギリシャ","304":"グリーンランド",
-  "308":"グレナダ","312":"グアドループ","316":"グアム","320":"グアテマラ",
-  "324":"ギニア","328":"ガイアナ","332":"ハイチ","336":"バチカン",
-  "340":"ホンジュラス","344":"香港","348":"ハンガリー","352":"アイスランド",
-  "356":"インド","360":"インドネシア","364":"イラン","368":"イラク",
-  "372":"アイルランド","376":"イスラエル","380":"イタリア","388":"ジャマイカ",
-  "392":"日本","398":"カザフスタン","400":"ヨルダン","404":"ケニア",
-  "408":"北朝鮮","410":"韓国","414":"クウェート","417":"キルギスタン",
-  "418":"ラオス","422":"レバノン","426":"レソト","428":"ラトビア",
-  "430":"リベリア","434":"リビア","438":"リヒテンシュタイン","440":"リトアニア",
-  "442":"ルクセンブルク","446":"マカオ","450":"マダガスカル","454":"マラウイ",
-  "458":"マレーシア","462":"モルディブ","466":"マリ","470":"マルタ",
-  "474":"マルティニーク","478":"モーリタニア","480":"モーリシャス","484":"メキシコ",
-  "492":"モナコ","496":"モンゴル","498":"モルドバ","499":"モンテネグロ",
-  "504":"モロッコ","508":"モザンビーク","516":"ナミビア","520":"ナウル",
-  "524":"ネパール","528":"オランダ","540":"ニューカレドニア","548":"バヌアツ",
-  "554":"ニュージーランド","558":"ニカラグア","562":"ニジェール","566":"ナイジェリア",
-  "570":"ニウエ","578":"ノルウェー","583":"ミクロネシア","584":"マーシャル諸島",
-  "585":"パラオ","586":"パキスタン","591":"パナマ","598":"パプアニューギニア",
-  "600":"パラグアイ","604":"ペルー","608":"フィリピン","616":"ポーランド",
-  "620":"ポルトガル","626":"東ティモール","630":"プエルトリコ","634":"カタール",
-  "638":"レユニオン","642":"ルーマニア","643":"ロシア","646":"ルワンダ",
-  "654":"セントヘレナ","659":"セントクリストファー・ネービス","662":"セントルシア",
-  "666":"サンピエール・ミクロン","670":"セントビンセント・グレナディーン",
-  "674":"サンマリノ","678":"サントメ・プリンシペ","682":"サウジアラビア",
-  "686":"セネガル","688":"セルビア","690":"セーシェル","694":"シエラレオネ",
-  "702":"シンガポール","703":"スロバキア","705":"スロベニア","706":"ソマリア",
-  "710":"南アフリカ","716":"ジンバブエ","724":"スペイン","728":"南スーダン",
-  "729":"スーダン","736":"スーダン","740":"スリナム","744":"スバールバル諸島",
-  "752":"スウェーデン","756":"スイス","760":"シリア","762":"タジキスタン",
-  "764":"タイ","768":"トーゴ","772":"トケラウ","776":"トンガ",
-  "780":"トリニダード・トバゴ","784":"アラブ首長国連邦","788":"チュニジア",
-  "792":"トルコ","795":"トルクメニスタン","796":"タークス・カイコス諸島",
-  "798":"ツバル","800":"ウガンダ","804":"ウクライナ","807":"北マケドニア",
-  "818":"エジプト","826":"イギリス","831":"ガーンジー","832":"ジャージー",
-  "840":"アメリカ","850":"アメリカ領バージン諸島","854":"ブルキナファソ",
-  "858":"ウルグアイ","860":"ウズベキスタン","862":"ベネズエラ","876":"ウォリス・フツナ",
-  "882":"サモア","887":"イエメン","894":"ザンビア","092":"英領バージン諸島",
-  "533":"アルバ","534":"シント・マールテン"
+// ISO numericコード → くにめい マップ（おもなくに）
+const COUNTRY_NAMES = {
+  "004":"アフガニスタン","008":"アルバニア","012":"アルジェリア","024":"アンゴラ","032":"アルゼンチン",
+  "036":"オーストラリア","040":"オーストリア","050":"バングラデシュ","056":"ベルギー","064":"ブータン",
+  "068":"ボリビア","076":"ブラジル","100":"ブルガリア","104":"ミャンマー","116":"カンボジア",
+  "120":"カメルーン","124":"カナダ","144":"スリランカ","152":"チリ","156":"中国",
+  "170":"コロンビア","180":"コンゴ民主共和国","188":"コスタリカ","191":"クロアチア","192":"キューバ",
+  "203":"チェコ","208":"デンマーク","218":"エクアドル","818":"エジプト","231":"エチオピア",
+  "246":"フィンランド","250":"フランス","276":"ドイツ","288":"ガーナ","300":"ギリシャ",
+  "320":"グアテマラ","332":"ハイチ","340":"ホンジュラス","348":"ハンガリー","356":"インド",
+  "360":"インドネシア","364":"イラン","368":"イラク","372":"アイルランド","376":"イスラエル",
+  "380":"イタリア","388":"ジャマイカ","392":"日本","400":"ヨルダン","398":"カザフスタン",
+  "404":"ケニア","410":"韓国","408":"北朝鮮","414":"クウェート","418":"ラオス",
+  "422":"レバノン","434":"リビア","484":"メキシコ","504":"モロッコ","508":"モザンビーク",
+  "516":"ナミビア","524":"ネパール","528":"オランダ","554":"ニュージーランド","558":"ニカラグア",
+  "566":"ナイジェリア","578":"ノルウェー","586":"パキスタン","591":"パナマ","598":"パプアニューギニア",
+  "600":"パラグアイ","604":"ペルー","608":"フィリピン","616":"ポーランド","620":"ポルトガル",
+  "630":"プエルトリコ","634":"カタール","642":"ルーマニア","643":"ロシア","682":"サウジアラビア",
+  "694":"シエラレオネ","706":"ソマリア","710":"南アフリカ","724":"スペイン","729":"スーダン",
+  "752":"スウェーデン","756":"スイス","760":"シリア","158":"台湾","762":"タジキスタン",
+  "764":"タイ","792":"トルコ","800":"ウガンダ","804":"ウクライナ","784":"アラブ首長国連邦",
+  "826":"イギリス","840":"アメリカ","858":"ウルグアイ","860":"ウズベキスタン","862":"ベネズエラ",
+  "704":"ベトナム","887":"イエメン","894":"ザンビア","716":"ジンバブエ","024":"アンゴラ",
+  "050":"バングラデシュ","051":"アルメニア","031":"アゼルバイジャン","112":"ベラルーシ",
+  "070":"ボスニア・ヘルツェゴビナ","854":"ブルキナファソ","108":"ブルンジ","140":"中央アフリカ共和国",
+  "148":"チャド","178":"コンゴ共和国","384":"コートジボワール","214":"ドミニカ共和国",
+  "232":"エリトリア","233":"エストニア","266":"ガボン","324":"ギニア","328":"ガイアナ",
+  "426":"レソト","428":"ラトビア","440":"リトアニア","450":"マダガスカル","454":"マラウイ",
+  "466":"マリ","496":"モンゴル","504":"モロッコ","516":"ナミビア","562":"ニジェール",
+  "586":"パキスタン","275":"パレスチナ","591":"パナマ","703":"スロバキア","705":"スロベニア",
+  "706":"ソマリア","736":"スーダン","740":"スリナム","834":"タンザニア","768":"トーゴ",
+  "788":"チュニジア","795":"トルクメニスタン","800":"ウガンダ","807":"北マケドニア",
+  "894":"ザンビア","716":"ジンバブエ",
 };
 
 // =====================================================
 // サイドバー
 // =====================================================
-function updateSidebar(){
-  const list=document.getElementById('mlist'),empty=document.getElementById('mlist-empty');
-  if(!paintMap.size){empty.style.display='';list.innerHTML='';return;}
-  empty.style.display='none';list.innerHTML='';
-  const cg={};
-  countryFeatures.forEach(f=>{const id=getCountryId(f),color=paintMap.get(id);if(!color)return;if(!cg[color])cg[color]=[];cg[color].push({name:getCountryName(f),id,color});});
-  Object.entries(cg).forEach(([color,items])=>{
-    const grp=document.createElement('div');grp.innerHTML=`<div class="grp-h" style="border-color:${color};color:${color};">■ ${color}</div>`;
-    items.sort((a,b)=>a.name.localeCompare(b.name)).forEach(({name,id,color:c})=>{
-      const mi=document.createElement('div');mi.className='mi';
+function updateSidebar() {
+  const list = document.getElementById('mlist');
+  const empty = document.getElementById('mlist-empty');
+  if (!paintMap.size) { empty.style.display=''; list.innerHTML=''; return; }
+  empty.style.display = 'none';
+  list.innerHTML = '';
+  // いろごとに グルプ
+  const colorGroups = {};
+  countryFeatures.forEach(f => {
+    const id = getCountryId(f);
+    const color = paintMap.get(id);
+    if (!color) return;
+    if (!colorGroups[color]) colorGroups[color] = [];
+    colorGroups[color].push({ name: getCountryName(f), id, color });
+  });
+  Object.entries(colorGroups).forEach(([color, items]) => {
+    const grp = document.createElement('div');
+    grp.innerHTML = `<div class="grp-h" style="border-color:${color};color:${color};">■ ${color}</div>`;
+    items.sort((a,b)=>a.name.localeCompare(b.name)).forEach(({name,id,color:c}) => {
+      const mi = document.createElement('div'); mi.className='mi';
       mi.innerHTML=`<div class="dot" style="background:${c}"></div><span class="mi-name">${name}</span><span class="mi-clear" data-id="${id}">✕</span>`;
-      mi.querySelector('.mi-clear').onclick=e=>{e.stopPropagation();paintMap.delete(id);gCountries.selectAll('.country-path').filter(d=>getCountryId(d)===id).attr('fill',landColor);updateSidebar();updateStats();};
+      mi.querySelector('.mi-clear').onclick = e => {
+        e.stopPropagation(); paintMap.delete(id);
+        gPoly.selectAll('path').filter(d=>getCountryId(d)===id).attr('fill',landColor);
+        updateSidebar(); updateStats();
+      };
       grp.appendChild(mi);
     });
     list.appendChild(grp);
   });
 }
-function updateStats(){document.getElementById('s-painted').textContent=paintMap.size;}
+function updateStats() { document.getElementById('s-painted').textContent = paintMap.size; }
 
 // =====================================================
 // ツールチップ
 // =====================================================
-let tipTimer=null;
-function showTip(ev,text){
-  clearTimeout(tipTimer);const tip=document.getElementById('tooltip');tip.textContent=text;moveTip(ev);
-  tipTimer=setTimeout(()=>{tip.style.opacity='1';},600);
+let tipTimer = null;
+function showTip(ev, text) {
+  clearTimeout(tipTimer);
+  const tip = document.getElementById('tooltip'); tip.textContent=text; moveTip(ev);
+  tipTimer = setTimeout(()=>{tip.style.opacity='1';}, 600);
 }
-function moveTip(ev){
-  const tip=document.getElementById('tooltip'),wrap=document.getElementById('map-wrap');
+function moveTip(ev) {
+  const tip=document.getElementById('tooltip'), wrap=document.getElementById('map-wrap');
   const r=wrap.getBoundingClientRect();
-  let x=ev.clientX-r.left+14,y=ev.clientY-r.top-10;
-  if(x+220>wrap.clientWidth)x=ev.clientX-r.left-220;
-  tip.style.left=x+'px';tip.style.top=y+'px';
+  let x=ev.clientX-r.left+14, y=ev.clientY-r.top-10;
+  if(x+220>wrap.clientWidth) x=ev.clientX-r.left-220;
+  tip.style.left=x+'px'; tip.style.top=y+'px';
 }
-function hideTip(){clearTimeout(tipTimer);document.getElementById('tooltip').style.opacity='0';}
-function updateInfobar(text){document.getElementById('ib-name').textContent=text||'──';}
+function hideTip() { clearTimeout(tipTimer); document.getElementById('tooltip').style.opacity='0'; }
+function updateInfobar(text) { document.getElementById('ib-name').textContent=text||'──'; }
 
 // =====================================================
 // セーブ/ロード
 // =====================================================
-function saveData(){
-  const obj={version:1,paintMap:Object.fromEntries(paintMap)};
-  const blob=new Blob([JSON.stringify(obj,null,2)],{type:'application/json'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+function saveData() {
+  const obj = { version:1, paintMap:Object.fromEntries(paintMap) };
+  const blob = new Blob([JSON.stringify(obj,null,2)],{type:'application/json'});
+  const a = document.createElement('a'); a.href=URL.createObjectURL(blob);
   const now=new Date();
   const ts=now.getFullYear()+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0')+String(now.getHours()).padStart(2,'0')+String(now.getMinutes()).padStart(2,'0')+String(now.getSeconds()).padStart(2,'0');
-  a.download=`world-nuri_${ts}.json`;a.click();toast('セーブしたヨ！');
+  a.download=`world-nuri_${ts}.json`; a.click(); toast('セーブしたヨ！');
 }
-function loadData(ev){
-  const file=ev.target.files[0];if(!file)return;
+function loadData(ev) {
+  const file=ev.target.files[0]; if(!file)return;
   const reader=new FileReader();
   reader.onload=e=>{
-    try{
+    try {
       const obj=JSON.parse(e.target.result);
       if(obj.paintMap){paintMap.clear();Object.entries(obj.paintMap).forEach(([k,v])=>paintMap.set(k,v));}
-      gCountries.selectAll('.country-path').attr('fill',d=>paintMap.get(getCountryId(d))||landColor);
-      updateSidebar();updateStats();toast('ロードしたヨ！');
-    }catch(err){toast('よみこみ エラー…');}
+      gPoly.selectAll('path').attr('fill',d=>paintMap.get(getCountryId(d))||landColor);
+      updateSidebar(); updateStats(); toast('ロードしたヨ！');
+    } catch(err){toast('よみこみ エラー…');}
     ev.target.value='';
   };
   reader.readAsText(file);
 }
-function clearAll(){
+function clearAll() {
   if(!confirm('ぜんぶ クリア しますか？'))return;
   paintMap.clear();
-  gCountries.selectAll('.country-path').attr('fill',landColor);
-  autoColorEnabled=false;autoColorIndex=0;autoColorSlots=['#e05030','#2080c0','#60a840','#d4b020'];
+  gPoly.selectAll('path').attr('fill',landColor);
+  autoColorEnabled=false; autoColorIndex=0;
+  autoColorSlots=['#e05030','#2080c0','#60a840','#d4b020'];
   document.getElementById('auto-color-toggle').checked=false;
-  const d=document.getElementById('auto-color-detail');d.style.opacity='0.4';d.style.pointerEvents='none';
-  renderAutoSlots();setCurrentColor('#e05030');updateSidebar();updateStats();toast('クリアしたヨ！');
+  const detail=document.getElementById('auto-color-detail');
+  detail.style.opacity='0.4'; detail.style.pointerEvents='none';
+  renderAutoSlots(); setCurrentColor('#e05030');
+  updateSidebar(); updateStats(); toast('クリアしたヨ！');
 }
-async function capturePNG(){
+
+// =====================================================
+// PNG キャプチャ
+// =====================================================
+async function capturePNG() {
   toast('PNG キャプチャ ちゅう…');
-  try{
-    const canvas=await html2canvas(document.getElementById('map-wrap'),{useCORS:true,scale:2});
-    const a=document.createElement('a');a.download='world-nuri.png';a.href=canvas.toDataURL('image/png');a.click();
+  try {
+    const canvas = await html2canvas(document.getElementById('map-wrap'),{useCORS:true,scale:2});
+    const a=document.createElement('a'); a.download='world-nuri.png'; a.href=canvas.toDataURL('image/png'); a.click();
     toast('PNG ほぞん できたヨ！');
-  }catch(e){toast('PNG キャプチャ しっぱい…');}
+  } catch(e){toast('PNG キャプチャ しっぱい…');}
 }
 
 // =====================================================
 // トースト・ドロワー
 // =====================================================
 let toastTimer;
-function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),2400);}
+function toast(msg) {
+  const el=document.getElementById('toast'); el.textContent=msg; el.classList.add('show');
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>el.classList.remove('show'),2400);
+}
 function toggleDrawer(){document.getElementById('aside').classList.toggle('open');document.getElementById('drawer-overlay').classList.toggle('open',document.getElementById('aside').classList.contains('open'));}
 function closeDrawer(){document.getElementById('aside').classList.remove('open');document.getElementById('drawer-overlay').classList.remove('open');}
-window.addEventListener('resize',()=>{buildProjection();redrawAll();});
+window.addEventListener('resize',()=>updateSvgOverlay());
 
 // =====================================================
 // きどう
 // =====================================================
-async function init(){
+async function init() {
   initPalette();
-  initD3Map();
-  try{
+  initMap();
+  try {
     await loadCountryData();
-    redrawAll();
-    document.getElementById('loading').style.display='none';
-    toast('クリックして くにを ぬてみてネ！');
-  }catch(e){
+    buildMap();
+  } catch(e) {
     console.error(e);
-    document.getElementById('loading').innerHTML='<div style="color:#c03030;">データ よみこみ しっぱい…<br>ぎっとはぶぺじ から ひらいてネ</div>';
+    document.getElementById('loading').innerHTML = '<div style="color:#c03030;">データ よみこみ しっぱい…</div>';
   }
 }
 init();
