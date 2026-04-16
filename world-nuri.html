@@ -124,7 +124,7 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
   <button class="hamburger" id="hamburger" onclick="toggleDrawer()"><span></span><span></span><span></span></button>
   <div class="logo">🌍</div>
   <div>
-    <div class="title">せかい ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.1.7</span></div>
+    <div class="title">せかい ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v1.0.0</span></div>
     <div class="subtitle">せかいの くに・しゅう ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -232,6 +232,46 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
           <span class="slider-label">ふとさ</span>
           <input type="range" id="border-width" min="0" max="4" step="0.25" value="0.5" style="flex:1;accent-color:var(--accent);" oninput="setBorderWidth(this.value)">
           <span class="slider-val" id="border-width-val">0.5</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:11px;color:var(--muted);min-width:60px;">しゅるい</span>
+          <select class="sel" id="border-dash" onchange="setBorderDash(this.value)" style="flex:1;font-size:11px;">
+            <option value="none">──── 実線</option>
+            <option value="4,3">- - - - 破線</option>
+            <option value="2,2">···· 点線</option>
+            <option value="8,3,2,3">─·─· 一点鎖線</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- かいがんせん -->
+    <div class="sec">
+      <div class="sec-h">かいがんせん</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--muted);">
+          <input type="checkbox" id="coast-toggle" onchange="toggleCoast(this.checked)" style="accent-color:var(--accent);width:14px;height:14px;">
+          ひょうじ する
+        </label>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:7px;opacity:0.4;" id="coast-detail">
+        <div class="color-row">
+          <div class="color-preview" id="coastPreview" style="background:#444444;cursor:pointer;" onclick="openColorPopup('coastPreview', coastColor, c => setCoastColor(c))"></div>
+          <span style="font-size:12px;color:var(--muted);">いろ</span>
+        </div>
+        <div class="slider-row">
+          <span class="slider-label">ふとさ</span>
+          <input type="range" id="coast-width" min="0" max="4" step="0.25" value="1.0" style="flex:1;accent-color:var(--accent);" oninput="setCoastWidth(this.value)">
+          <span class="slider-val" id="coast-width-val">1.0</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:11px;color:var(--muted);min-width:60px;">しゅるい</span>
+          <select class="sel" id="coast-dash" onchange="setCoastDash(this.value)" style="flex:1;font-size:11px;">
+            <option value="none">──── 実線</option>
+            <option value="4,3">- - - - 破線</option>
+            <option value="2,2">···· 点線</option>
+            <option value="8,3,2,3">─·─· 一点鎖線</option>
+          </select>
         </div>
       </div>
     </div>
@@ -456,7 +496,8 @@ function addProvinceLayer() { toast('しゅうモードは じゅんびちゅう
 let paintMap = new Map(); // uid → color
 let countryFeatures = []; // くにポリゴン
 let landColor = '#dcd2c8', seaColor = '#c8d8e8';
-let borderColor = '#888888', borderWidth = 0.5, borderOn = true;
+let borderColor = '#888888', borderWidth = 0.5, borderOn = true, borderDash = 'none';
+let coastColor = '#444444', coastWidth = 1.0, coastOn = false, coastDash = 'none';
 
 // くに の UID は ISO_A3 コード
 function getCountryId(f) {
@@ -491,7 +532,12 @@ function setPolyOpacity(v) { document.getElementById('poly-opacity-val').textCon
 
 function setBorderColor(c) { borderColor=c; document.getElementById('borderPreview').style.background=c; redrawBorders(); }
 function setBorderWidth(v) { borderWidth=parseFloat(v); document.getElementById('border-width-val').textContent=v; redrawBorders(); }
-function toggleBorder(on) { borderOn=on; document.getElementById('border-detail').style.opacity=on?'1':'0.4'; gBorder&&gBorder.style('display',on?null:'none'); }
+function toggleBorder(on) { borderOn=on; document.getElementById('border-detail').style.opacity=on?'1':'0.4'; redrawBorders(); }
+function setBorderDash(v) { borderDash=v; redrawBorders(); }
+function toggleCoast(on) { coastOn=on; document.getElementById('coast-detail').style.opacity=on?'1':'0.4'; redrawBorders(); }
+function setCoastColor(c) { coastColor=c; document.getElementById('coastPreview').style.background=c; redrawBorders(); }
+function setCoastWidth(v) { coastWidth=parseFloat(v); document.getElementById('coast-width-val').textContent=v; redrawBorders(); }
+function setCoastDash(v) { coastDash=v; redrawBorders(); }
 function setLandColor(c) {
   landColor=c; document.getElementById('landColorPreview').style.background=c;
   gPoly&&gPoly.selectAll('path').each(function(d){if(!paintMap.has(getCountryId(d)))d3.select(this).attr('fill',landColor);});
@@ -643,16 +689,42 @@ function buildMap() {
 // =====================================================
 function redrawBorders() {
   gBorder.selectAll('path').remove();
-  if (!borderOn || borderWidth<=0 || !countryTopo || !d3Path) return;
+  if (!countryTopo || !d3Path) return;
   try {
-    const mesh = topojson.mesh(countryTopo, countryTopo.objects.countries, (a,b)=>a!==b);
-    const d = d3Path(mesh);
-    if (!d) return;
-    gBorder.append('path').attr('d',d).attr('fill','none')
-      .attr('stroke',borderColor).attr('stroke-width',borderWidth)
-      .attr('stroke-linejoin','round').attr('stroke-linecap','round')
-      .style('pointer-events','none');
-  } catch(e) {}
+    const offset = get360Offset();
+    // ③ くにざかいせん（+左右コピー）
+    if (borderOn && borderWidth > 0) {
+      const mesh = topojson.mesh(countryTopo, countryTopo.objects.countries, (a,b)=>a!==b);
+      const d = d3Path(mesh);
+      if (d) {
+        const dashArr = borderDash === 'none' ? null : borderDash;
+        [d, shiftPathByX(d, offset), shiftPathByX(d, -offset)].forEach(pd => {
+          if (!pd) return;
+          gBorder.append('path').attr('d', pd).attr('fill','none')
+            .attr('stroke', borderColor).attr('stroke-width', borderWidth)
+            .attr('stroke-dasharray', dashArr)
+            .attr('stroke-linejoin','round').attr('stroke-linecap','round')
+            .style('pointer-events','none');
+        });
+      }
+    }
+    // ⑤ かいがんせん（そとわく +左右コピー）
+    if (coastOn && coastWidth > 0) {
+      const coast = topojson.mesh(countryTopo, countryTopo.objects.countries, (a,b)=>a===b);
+      const dc = d3Path(coast);
+      if (dc) {
+        const dashArr = coastDash === 'none' ? null : coastDash;
+        [dc, shiftPathByX(dc, offset), shiftPathByX(dc, -offset)].forEach(pd => {
+          if (!pd) return;
+          gBorder.append('path').attr('d', pd).attr('fill','none')
+            .attr('stroke', coastColor).attr('stroke-width', coastWidth)
+            .attr('stroke-dasharray', dashArr)
+            .attr('stroke-linejoin','round').attr('stroke-linecap','round')
+            .style('pointer-events','none');
+        });
+      }
+    }
+  } catch(e) { console.error(e); }
 }
 
 // =====================================================
@@ -716,6 +788,40 @@ const COUNTRY_NAMES = {
   "706":"ソマリア","736":"スーダン","740":"スリナム","834":"タンザニア","768":"トーゴ",
   "788":"チュニジア","795":"トルクメニスタン","800":"ウガンダ","807":"北マケドニア",
   "894":"ザンビア","716":"ジンバブエ",
+  "344":"香港","446":"マカオ","492":"モナコ","674":"サンマリノ",
+  "336":"バチカン","438":"リヒテンシュタイン","352":"アイスランド",
+  "008":"アルバニア","020":"アンドラ","040":"オーストリア",
+  "191":"クロアチア","196":"キプロス","703":"スロバキア","705":"スロベニア",
+  "807":"北マケドニア","499":"モンテネグロ","688":"セルビア","070":"ボスニア・ヘルツェゴビナ",
+  "084":"ベリーズ","188":"コスタリカ","214":"ドミニカ共和国","222":"エルサルバドル",
+  "320":"グアテマラ","332":"ハイチ","340":"ホンジュラス","388":"ジャマイカ",
+  "558":"ニカラグア","591":"パナマ","630":"プエルトリコ","662":"セントルシア",
+  "028":"アンティグア・バーブーダ","044":"バハマ","052":"バルバドス",
+  "308":"グレナダ","659":"セントクリストファー・ネービス",
+  "670":"セントビンセント・グレナディーン","780":"トリニダード・トバゴ",
+  "192":"キューバ","212":"ドミニカ","388":"ジャマイカ",
+  "096":"ブルネイ","116":"カンボジア","360":"インドネシア","418":"ラオス",
+  "458":"マレーシア","104":"ミャンマー","608":"フィリピン","702":"シンガポール",
+  "764":"タイ","626":"東ティモール","704":"ベトナム",
+  "050":"バングラデシュ","064":"ブータン","356":"インド","462":"モルディブ",
+  "524":"ネパール","144":"スリランカ",
+  "036":"オーストラリア","242":"フィジー","296":"キリバス","584":"マーシャル諸島",
+  "583":"ミクロネシア","520":"ナウル","554":"ニュージーランド","585":"パラオ",
+  "598":"パプアニューギニア","882":"サモア","090":"ソロモン諸島","776":"トンガ",
+  "798":"ツバル","548":"バヌアツ",
+  "012":"アルジェリア","024":"アンゴラ","072":"ボツワナ","086":"ブルキナファソ",
+  "108":"ブルンジ","120":"カメルーン","132":"カーボベルデ","140":"中央アフリカ共和国",
+  "148":"チャド","174":"コモロ","178":"コンゴ共和国","180":"コンゴ民主共和国",
+  "262":"ジブチ","818":"エジプト","226":"赤道ギニア","232":"エリトリア",
+  "231":"エチオピア","266":"ガボン","270":"ガンビア","288":"ガーナ",
+  "324":"ギニア","624":"ギニアビサウ","384":"コートジボワール","404":"ケニア",
+  "426":"レソト","430":"リベリア","434":"リビア","450":"マダガスカル",
+  "454":"マラウイ","466":"マリ","478":"モーリタニア","480":"モーリシャス",
+  "504":"モロッコ","508":"モザンビーク","516":"ナミビア","562":"ニジェール",
+  "566":"ナイジェリア","646":"ルワンダ","678":"サントメ・プリンシペ",
+  "686":"セネガル","694":"シエラレオネ","706":"ソマリア","710":"南アフリカ",
+  "728":"南スーダン","729":"スーダン","748":"スワジランド","834":"タンザニア",
+  "768":"トーゴ","788":"チュニジア","800":"ウガンダ","894":"ザンビア","716":"ジンバブエ",
 };
 
 // =====================================================
