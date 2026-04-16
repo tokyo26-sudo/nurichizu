@@ -124,7 +124,7 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
   <button class="hamburger" id="hamburger" onclick="toggleDrawer()"><span></span><span></span><span></span></button>
   <div class="logo">🌍</div>
   <div>
-    <div class="title">せかい ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v1.0.8</span></div>
+    <div class="title">せかい ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v1.1.0</span></div>
     <div class="subtitle">せかいの くに・しゅう ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -149,13 +149,13 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
       </div>
       <div class="slider-row">
         <span class="slider-label">タイル</span>
-        <input type="range" min="0" max="100" step="1" value="20" style="flex:1;accent-color:var(--accent);" oninput="setTileOpacity(this.value)">
-        <span class="slider-val" id="tile-opacity-val">20%</span>
+        <input type="range" min="0" max="100" step="1" value="0" style="flex:1;accent-color:var(--accent);" oninput="setTileOpacity(this.value)">
+        <span class="slider-val" id="tile-opacity-val">0%</span>
       </div>
       <div class="slider-row" style="margin-top:6px;">
         <span class="slider-label">ポリゴン</span>
-        <input type="range" min="0" max="100" step="1" value="80" style="flex:1;accent-color:var(--accent);" oninput="setPolyOpacity(this.value)">
-        <span class="slider-val" id="poly-opacity-val">80%</span>
+        <input type="range" min="0" max="100" step="1" value="100" style="flex:1;accent-color:var(--accent);" oninput="setPolyOpacity(this.value)">
+        <span class="slider-val" id="poly-opacity-val">100%</span>
       </div>
     </div>
 
@@ -212,6 +212,26 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
         <button id="btn-eyedropper" onclick="toggleEyedropper()" style="margin-left:auto;margin-top:0;width:auto;padding:4px 8px;font-size:13px;" class="btn" title="スポイト">💉</button>
       </div>
       <div class="palette" id="palette"></div>
+    </div>
+
+    <!-- くにめい ひょうじ -->
+    <div class="sec">
+      <div class="sec-h">くにめい ひょうじ</div>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--muted);">
+        <input type="checkbox" id="label-toggle" onchange="toggleLabels(this.checked)" style="accent-color:var(--accent);width:14px;height:14px;">
+        ひょうじ する
+      </label>
+      <div id="label-detail" style="margin-top:8px;display:flex;flex-direction:column;gap:7px;opacity:0.4;pointer-events:none;">
+        <div class="color-row">
+          <div class="color-preview" id="labelColorPreview" style="background:#222222;cursor:pointer;" onclick="openColorPopup('labelColorPreview', labelColor, c => setLabelColor(c))"></div>
+          <span style="font-size:12px;color:var(--muted);">もじ いろ</span>
+        </div>
+        <div class="slider-row">
+          <span class="slider-label">おおきさ</span>
+          <input type="range" id="label-size" min="6" max="20" step="1" value="10" style="flex:1;accent-color:var(--accent);" oninput="setLabelSize(this.value)">
+          <span class="slider-val" id="label-size-val">10</span>
+        </div>
+      </div>
     </div>
 
     <!-- さかいせん -->
@@ -554,10 +574,11 @@ function resetColors() {
 // =====================================================
 // Leaflet + D3
 // =====================================================
-let lmap, tileLayer, svgOverlay, gPoly, gBorder;
+let lmap, tileLayer, svgOverlay, gPoly, gBorder, gLabel;
 
 // D3 geoPath（アンチメリジアン・きょくちほう ぜんぶ D3に まかせる）
 let d3Projection, d3Path;
+let labelOn = false, labelColor = '#222222', labelSize = 10;
 
 function setMapCenter(lng) {
   lmap.setView([20, lng], lmap.getZoom());
@@ -570,12 +591,13 @@ function initMap() {
   lmap = L.map('leaflet-map', { center:[20,0], zoom:2, zoomControl:false, zoomSnap:0.25, zoomDelta:0.25 });
   tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    maxZoom:18, opacity:0.2,
+    maxZoom:18, opacity:0,
   }).addTo(lmap);
   const svgLayer = L.svg({padding:0}).addTo(lmap);
   svgOverlay = d3.select(svgLayer._container);
   gPoly   = svgOverlay.append('g').attr('class','g-poly');
   gBorder = svgOverlay.append('g').attr('class','g-border');
+  gLabel  = svgOverlay.append('g').attr('class','g-label');
   // D3 projection を はじめに つくる
   updateProjection();
   lmap.on('zoom move zoomend moveend', updateSvgOverlay);
@@ -630,6 +652,7 @@ function updateSvgOverlay() {
   updateProjection();
   gPoly.selectAll('path').each(function(d){ d3.select(this).attr('d', geoPathFn(d)); });
   redrawBorders();
+  redrawLabels();
 }
 
 // =====================================================
@@ -688,6 +711,7 @@ function buildMap() {
       if (!alreadySame) advanceAutoColor();
     });
   redrawBorders();
+  redrawLabels();
   document.getElementById('loading').style.display = 'none';
 }
 
@@ -732,6 +756,60 @@ function redrawBorders() {
       }
     }
   } catch(e) { console.error(e); }
+}
+
+// =====================================================
+// くにめい ラベル
+// =====================================================
+function toggleLabels(on) {
+  labelOn = on;
+  const detail = document.getElementById('label-detail');
+  detail.style.opacity = on ? '1' : '0.4';
+  detail.style.pointerEvents = on ? 'auto' : 'none';
+  redrawLabels();
+}
+function setLabelColor(c) {
+  labelColor = c;
+  document.getElementById('labelColorPreview').style.background = c;
+  redrawLabels();
+}
+function setLabelSize(v) {
+  labelSize = parseInt(v);
+  document.getElementById('label-size-val').textContent = v;
+  redrawLabels();
+}
+function redrawLabels() {
+  gLabel.selectAll('text').remove();
+  if (!labelOn || !countryFeatures.length || !d3Path) return;
+  const zoom = lmap.getZoom();
+  countryFeatures.forEach(f => {
+    const name = getCountryName(f);
+    if (!name) return;
+    // じゅうしん けいさん（アンチメリジアン対策: 経度を -180〜180 に クランプ）
+    try {
+      const centroid = d3.geoCentroid(f);
+      if (!centroid || isNaN(centroid[0]) || isNaN(centroid[1])) return;
+      // ズームレベルが ひくいとき ちいさい くには スキップ
+      const area = d3.geoArea(f);
+      if (zoom < 3 && area < 0.003) return;
+      if (zoom < 4 && area < 0.0005) return;
+      const pt = d3Projection(centroid);
+      if (!pt) return;
+      gLabel.append('text')
+        .attr('x', pt[0])
+        .attr('y', pt[1])
+        .attr('text-anchor', 'middle')
+        .attr('dominant-baseline', 'middle')
+        .attr('font-size', labelSize)
+        .attr('font-family', "'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif")
+        .attr('fill', labelColor)
+        .attr('stroke', 'white')
+        .attr('stroke-width', '2')
+        .attr('paint-order', 'stroke')
+        .style('pointer-events', 'none')
+        .text(name);
+    } catch(e) {}
+  });
 }
 
 // =====================================================
