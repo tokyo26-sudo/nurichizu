@@ -117,7 +117,7 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
   <button class="hamburger" id="hamburger" onclick="toggleDrawer()"><span></span><span></span><span></span></button>
   <div class="logo">🌍</div>
   <div>
-    <div class="title">せかい ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.3.2</span></div>
+    <div class="title">せかい ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.3.3</span></div>
     <div class="subtitle">せかいの くに・しゅう ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -465,14 +465,20 @@ function initD3Map(){
     gBorders.attr('transform', currentTransform);
   }, { passive: false });
 
+  // SVG要素かどうか判定（SVGAnimatedString対応）
+  function isCountryPath(el) {
+    if (!el) return false;
+    const cls = el.getAttribute ? el.getAttribute('class') : el.className;
+    return typeof cls === 'string' && cls.includes('country-path');
+  }
+
   // クリック：dragLayerをすりぬけてSVGのパスに とどける
   dragDiv.addEventListener('click', (ev) => {
     if (isDragging) return;
-    // dragDiv をいったり非表示にして SVG のパスに クリックを とどける
     dragDiv.style.pointerEvents = 'none';
     const el = document.elementFromPoint(ev.clientX, ev.clientY);
     dragDiv.style.pointerEvents = 'auto';
-    if (!el || !el.classList.contains('country-path')) return;
+    if (!isCountryPath(el)) return;
     const d = el.__data__;
     if (!d) return;
     paintCountry(d, el);
@@ -483,7 +489,7 @@ function initD3Map(){
     dragDiv.style.pointerEvents = 'none';
     const el = document.elementFromPoint(ev.clientX, ev.clientY);
     dragDiv.style.pointerEvents = 'auto';
-    if (!el || !el.classList.contains('country-path')) {
+    if (!isCountryPath(el)) {
       hideTip(); updateInfobar('──'); return;
     }
     const d = el.__data__;
