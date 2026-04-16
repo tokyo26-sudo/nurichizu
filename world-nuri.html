@@ -117,7 +117,7 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
   <button class="hamburger" id="hamburger" onclick="toggleDrawer()"><span></span><span></span><span></span></button>
   <div class="logo">🌍</div>
   <div>
-    <div class="title">せかい ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.2.5</span></div>
+    <div class="title">せかい ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.2.6</span></div>
     <div class="subtitle">せかいの くに・しゅう ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -442,11 +442,14 @@ function buildProjection(){
   const wrap = document.getElementById('map-wrap');
   const W = wrap.clientWidth, H = wrap.clientHeight;
 
-  // geoMercatorでちゅうしん経度を rotate で かいてん
+  // geoMercator デフォルトで scale=153, translate=[480,250]
+  // W/H にあわせて スケールする
+  const scale = Math.min(W, H * 1.6) / 5.5;
+  // ちゅうしん経度は rotate で かいてん（translate は がめん ちゅうおう）
   projection = d3.geoMercator()
     .rotate([-currentCenterLng, 0])
-    .scale(W / 6.5)
-    .translate([W / 2, H / 2]);
+    .scale(scale)
+    .translate([W / 2, H / 2 + H * 0.05]);
 
   pathGen = d3.geoPath().projection(projection);
 }
