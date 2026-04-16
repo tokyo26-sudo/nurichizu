@@ -117,7 +117,7 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
   <button class="hamburger" id="hamburger" onclick="toggleDrawer()"><span></span><span></span><span></span></button>
   <div class="logo">🌍</div>
   <div>
-    <div class="title">せかい ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.3.3</span></div>
+    <div class="title">せかい ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.3.4</span></div>
     <div class="subtitle">せかいの くに・しゅう ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -508,9 +508,9 @@ function initD3Map(){
 function buildProjection(){
   const wrap = document.getElementById('map-wrap');
   const W = wrap.clientWidth, H = wrap.clientHeight;
-  // メルカトルの デフォルト scale=153 は 960x500 がめん むけ
-  // がめん W にあわせて スケールする（メルカトルは よこ方向 2π=360度 が W に はいるように）
-  const scale = W / (2 * Math.PI) * 2.5;
+  // geoMercatorのデフォルトscale=153はwidth=960むけ
+  // せかいぜんたいが よこに おさまるように スケール
+  const scale = (W / 960) * 153;
   projection = d3.geoMercator()
     .rotate([-currentCenterLng, 0])
     .scale(scale)
