@@ -117,7 +117,7 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
   <button class="hamburger" id="hamburger" onclick="toggleDrawer()"><span></span><span></span><span></span></button>
   <div class="logo">🌍</div>
   <div>
-    <div class="title">せかい ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.2.3</span></div>
+    <div class="title">せかい ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.2.4</span></div>
     <div class="subtitle">せかいの くに・しゅう ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -396,17 +396,17 @@ let currentTransform = d3.zoomIdentity;
 
 function getCountryId(f){
   if (!f) return '';
-  // world-atlasのfeatureはf.idに数値コードが入っている
-  const p = f.properties || {};
-  const id = p.ISO_A3 || p.iso_a3 || p.ADM0_A3 || '';
-  if (id) return String(id);
-  // f.idは数値なのでゼロパディングで3桁にする
-  if (f.id !== undefined && f.id !== null) return String(f.id).padStart(3, '0');
+  // world-atlasのf.idはすでに文字列3桁コード
+  if (f.id !== undefined && f.id !== null) return String(f.id);
   return '';
 }
 function getCountryName(f){
-  const p=f.properties||{};
-  return p.NAME||p.name||p.ADMIN||p.admin||'';
+  const p = f.properties || {};
+  // まずCOUNTRY_NAMESから日本語名を探す
+  const id = getCountryId(f);
+  if (id && COUNTRY_NAMES[id]) return COUNTRY_NAMES[id];
+  // なければプロパティのname（英語）
+  return p.NAME || p.name || p.ADMIN || p.admin || id || '';
 }
 
 function initD3Map(){
@@ -549,12 +549,11 @@ async function loadCountryData(){
   countryTopo=topo;
   const fc=topojson.feature(topo,topo.objects.countries);
   countryFeatures=fc.features;
+  // f.idはすでに文字列3桁コードなのでそのままつかう
   countryFeatures.forEach(f=>{
     f.properties = f.properties || {};
-    // f.idは数値 → 3桁ゼロパディングでCOUNTRY_NAMESのキーに合わせる
-    const id = f.id !== undefined ? String(f.id).padStart(3, '0') : '';
-    f.properties.ISO_A3 = id;
-    f.properties.NAME = COUNTRY_NAMES[id] || ('不明(' + id + ')');
+    const id = String(f.id || '');
+    f.properties._id = id;
   });
 }
 
