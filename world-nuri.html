@@ -124,7 +124,7 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
   <button class="hamburger" id="hamburger" onclick="toggleDrawer()"><span></span><span></span><span></span></button>
   <div class="logo">🌍</div>
   <div>
-    <div class="title">せかい ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.1.6</span></div>
+    <div class="title">せかい ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.1.7</span></div>
     <div class="subtitle">せかいの くに・しゅう ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -528,13 +528,16 @@ function initMap() {
   lmap.on('zoom move zoomend moveend', updateSvgOverlay);
 }
 
+// Leaflet の ざひょうを つかって 経度→スクリーンX に へんかん
+function lngToX(lng, lat) {
+  const pt = lmap.latLngToLayerPoint(L.latLng(lat, lng));
+  return pt;
+}
+
 // Leaflet の ズーム・パンに あわせて D3 projection を こうしん
 function updateProjection() {
-  // Leaflet の zoom レベルから D3 の scale を もとめる
-  // Leaflet zoom=0 で 256px タイル → D3 geoMercator の scale=256/(2π)
   const zoom = lmap.getZoom();
   const scale = (256 / (2 * Math.PI)) * Math.pow(2, zoom);
-  // 経度0度・緯度0度の スクリーン ざひょう を つかって translate を もとめる
   const origin = lmap.latLngToLayerPoint(L.latLng(0, 0));
   d3Projection = d3.geoMercator()
     .scale(scale)
@@ -542,31 +545,31 @@ function updateProjection() {
   d3Path = d3.geoPath().projection(d3Projection);
 }
 
+// 1ピクセルあたりの経度差を計算（+360度ずらしたときのXオフセット）
+function get360Offset() {
+  const p0 = lmap.latLngToLayerPoint(L.latLng(0, 0));
+  const p360 = lmap.latLngToLayerPoint(L.latLng(0, 360));
+  return p360.x - p0.x;
+}
+
 function geoPathFn(feature) {
   if (!d3Path || !feature || !feature.geometry) return '';
   const p1 = d3Path(feature) || '';
-  const p2 = d3Path(shiftFeatureLng(feature, 360)) || '';
-  const p3 = d3Path(shiftFeatureLng(feature, -360)) || '';
+  // +360度ずらしたコピー（みぎがわ）
+  const offset = get360Offset();
+  const p2 = shiftPathByX(d3Path(feature) || '', offset);
+  // -360度ずらしたコピー（ひだりがわ）
+  const p3 = shiftPathByX(d3Path(feature) || '', -offset);
   return p1 + ' ' + p2 + ' ' + p3;
 }
 
-// featureの経度をdlng度ずらしたコピーをかえす
-function shiftFeatureLng(feature, dlng) {
-  if (!feature || !feature.geometry) return feature;
-  const geom = feature.geometry;
-  function shiftCoords(coords) {
-    if (typeof coords[0] === 'number') return [coords[0] + dlng, coords[1]];
-    return coords.map(shiftCoords);
-  }
-  return {
-    type: 'Feature',
-    properties: feature.properties,
-    id: feature.id,
-    geometry: {
-      type: geom.type,
-      coordinates: shiftCoords(geom.coordinates)
-    }
-  };
+// SVGパス文字列のX座標を dx だけずらす
+function shiftPathByX(pathStr, dx) {
+  if (!pathStr || dx === 0) return '';
+  // M/L/C/Q コマンドのX座標をずらす
+  return pathStr.replace(/([ML])\s*([-\d.]+),([-\d.]+)/g, (m, cmd, x, y) => {
+    return cmd + (parseFloat(x) + dx).toFixed(1) + ',' + y;
+  });
 }
 
 function updateSvgOverlay() {
