@@ -199,7 +199,7 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
   <button class="hamburger" id="hamburger" onclick="toggleDrawer()"><span></span><span></span><span></span></button>
   <div class="logo">🗺️</div>
   <div>
-    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v1.0.0</span></div>
+    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v1.0.1</span></div>
     <div class="subtitle">れきしてき ぎょうせいくいき ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -665,10 +665,13 @@ let layers = [];
 
 function createLayerObj(name, era) {
   layerCounter++;
+  const LAYER_COLORS = ['#c0392b', '#2471a3', '#1a7a4a', '#7d3c98'];
+  const layerColor = LAYER_COLORS[(layerCounter - 1) % LAYER_COLORS.length];
   return {
     id: 'layer-' + layerCounter,
     name: name || ('レイヤ ' + layerCounter),
     era: era || '1920',
+    color: layerColor,
     activePrefs: [],
     paintMap: new Map(),
     features: [],
@@ -819,7 +822,12 @@ function renderLayerList() {
   layers.slice().reverse().forEach((layer, revIdx) => {
     const realIdx = layers.length - 1 - revIdx;
     const card = document.createElement('div');
+    const lc = layer.color || 'var(--accent)';
     card.className = 'layer-card' + (layer.id === activeLayerId ? ' active-layer' : '') + (!layer.visible ? ' hidden-layer' : '');
+    if (layer.id === activeLayerId) {
+      card.style.borderColor = lc;
+      card.style.boxShadow = `0 0 0 2px ${lc}26`;
+    }
 
     // ヘッダ
     const hdr = document.createElement('div');
@@ -827,17 +835,20 @@ function renderLayerList() {
 
     const radio = document.createElement('input');
     radio.type = 'radio'; radio.name = 'active-layer'; radio.className = 'layer-radio';
+    radio.style.accentColor = lc;
     radio.checked = (layer.id === activeLayerId);
     radio.onchange = () => setActiveLayer(layer.id);
 
     const nameEl = document.createElement('span');
     nameEl.className = 'layer-name'; nameEl.textContent = layer.name;
+    nameEl.style.color = lc;
     nameEl.style.cursor = 'pointer';
     nameEl.onclick = e => { e.stopPropagation(); setActiveLayer(layer.id); };
 
     if (layer.id === activeLayerId) {
       const badge = document.createElement('span');
       badge.className = 'layer-active-badge'; badge.textContent = '編集中';
+      badge.style.background = lc;
       hdr.appendChild(radio); hdr.appendChild(nameEl); hdr.appendChild(badge);
     } else {
       hdr.appendChild(radio); hdr.appendChild(nameEl);
@@ -1674,7 +1685,7 @@ function saveData() {
   const obj = {
     version: 4,
     layers: layers.map(l => ({
-      id: l.id, name: l.name, era: l.era,
+      id: l.id, name: l.name, era: l.era, color: l.color,
       activePrefs: l.activePrefs, paintMap: Object.fromEntries(l.paintMap),
       visible: l.visible, opacity: l.opacity,
       borderColor: l.borderColor, borderWidth: l.borderWidth, borderDash: l.borderDash, borderOn: l.borderOn,
@@ -1710,6 +1721,7 @@ async function loadData(ev) {
           layer.activePrefs = ld.activePrefs || [];
           layer.visible = ld.visible !== false;
           layer.opacity = ld.opacity || 75;
+          if (ld.color) layer.color = ld.color;
           if (ld.borderColor) layer.borderColor = ld.borderColor;
           if (ld.borderWidth !== undefined) layer.borderWidth = ld.borderWidth;
           if (ld.borderDash) layer.borderDash = ld.borderDash;
