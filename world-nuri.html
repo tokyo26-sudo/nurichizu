@@ -117,7 +117,7 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
   <button class="hamburger" id="hamburger" onclick="toggleDrawer()"><span></span><span></span><span></span></button>
   <div class="logo">🌍</div>
   <div>
-    <div class="title">せかい ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.3.5</span></div>
+    <div class="title">せかい ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.2.7b</span></div>
     <div class="subtitle">せかいの くに・しゅう ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -240,14 +240,9 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
       <div class="loading-sub">せかいの くにデータを よみこんでいるヨ、すこし まてネ</div>
     </div>
     <svg id="map-svg">
-      <defs>
-        <clipPath id="map-clip">
-          <rect id="map-clip-rect" x="0" y="0" width="100%" height="100%"/>
-        </clipPath>
-      </defs>
       <rect id="sea-rect" width="100%" height="100%" fill="#c8d8e8"/>
-      <g id="g-countries" clip-path="url(#map-clip)"></g>
-      <g id="g-borders" clip-path="url(#map-clip)"></g>
+      <g id="g-countries"></g>
+      <g id="g-borders"></g>
     </svg>
     <div id="tooltip" class="tooltip"></div>
     <div class="zoom-ctrl">
@@ -420,92 +415,26 @@ function initD3Map(){
   gCountries = d3.select('#g-countries');
   gBorders   = d3.select('#g-borders');
 
-  // ドラッグ・ズーム用のかくれた div（SVGのうえにおく）
-  // こうすれば SVGの パスの クリックイベントが じゃまされない
-  const dragDiv = document.createElement('div');
-  dragDiv.style.cssText = 'position:absolute;inset:0;z-index:5;cursor:grab;';
-  dragDiv.id = 'drag-layer';
-  wrap.appendChild(dragDiv);
+  // D3 zoom - ポリゴン上のクリックはzoomに渡さない
+  // SVG要素のclassNameはSVGAnimatedStringなのでgetAttributeで判定する
+  const zoom = d3.zoom()
+    .scaleExtent([0.5, 20])
+    .filter(event => {
+      const cls = event.target && event.target.getAttribute ? event.target.getAttribute('class') : '';
+      if (cls && cls.includes('country-path')) {
+        return event.type === 'wheel' || event.type === 'touchstart';
+      }
+      return !event.button;
+    })
+    .on('zoom', (event) => {
+      currentTransform = event.transform;
+      gCountries.attr('transform', currentTransform);
+      gBorders.attr('transform', currentTransform);
+    });
+  svgSel.call(zoom);
 
-  // ドラッグ
-  let dragStart = null;
-  dragDiv.addEventListener('mousedown', (ev) => {
-    if (ev.button !== 0) return;
-    isDragging = false;
-    dragStart = { x: ev.clientX, y: ev.clientY, tx: currentTransform.x, ty: currentTransform.y };
-    dragDiv.style.cursor = 'grabbing';
-  });
-  window.addEventListener('mousemove', (ev) => {
-    if (!dragStart) return;
-    const dx = ev.clientX - dragStart.x;
-    const dy = ev.clientY - dragStart.y;
-    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) isDragging = true;
-    const newT = d3.zoomIdentity
-      .translate(dragStart.tx + dx, dragStart.ty + dy)
-      .scale(currentTransform.k);
-    currentTransform = newT;
-    gCountries.attr('transform', newT);
-    gBorders.attr('transform', newT);
-  });
-  window.addEventListener('mouseup', () => {
-    if (!dragStart) return;
-    dragStart = null;
-    dragDiv.style.cursor = 'grab';
-    setTimeout(() => { isDragging = false; }, 50);
-  });
-
-  // ホイール ズーム
-  wrap.addEventListener('wheel', (ev) => {
-    ev.preventDefault();
-    const factor = ev.deltaY < 0 ? 1.15 : 1/1.15;
-    const rect = wrap.getBoundingClientRect();
-    const mx = ev.clientX - rect.left;
-    const my = ev.clientY - rect.top;
-    // マウス位置を中心にズーム
-    const newK = Math.max(0.5, Math.min(20, currentTransform.k * factor));
-    const newX = mx - (mx - currentTransform.x) * (newK / currentTransform.k);
-    const newY = my - (my - currentTransform.y) * (newK / currentTransform.k);
-    currentTransform = d3.zoomIdentity.translate(newX, newY).scale(newK);
-    gCountries.attr('transform', currentTransform);
-    gBorders.attr('transform', currentTransform);
-  }, { passive: false });
-
-  // SVG要素かどうか判定（SVGAnimatedString対応）
-  function isCountryPath(el) {
-    if (!el) return false;
-    const cls = el.getAttribute ? el.getAttribute('class') : el.className;
-    return typeof cls === 'string' && cls.includes('country-path');
-  }
-
-  // クリック：dragLayerをすりぬけてSVGのパスに とどける
-  dragDiv.addEventListener('click', (ev) => {
-    if (isDragging) return;
-    dragDiv.style.pointerEvents = 'none';
-    const el = document.elementFromPoint(ev.clientX, ev.clientY);
-    dragDiv.style.pointerEvents = 'auto';
-    if (!isCountryPath(el)) return;
-    const d = el.__data__;
-    if (!d) return;
-    paintCountry(d, el);
-  });
-
-  // ホバー：dragLayerをすりぬけてSVGのパスに とどける
-  dragDiv.addEventListener('mousemove', (ev) => {
-    dragDiv.style.pointerEvents = 'none';
-    const el = document.elementFromPoint(ev.clientX, ev.clientY);
-    dragDiv.style.pointerEvents = 'auto';
-    if (!isCountryPath(el)) {
-      hideTip(); updateInfobar('──'); return;
-    }
-    const d = el.__data__;
-    if (!d) return;
-    const name = getCountryName(d);
-    const id = getCountryId(d);
-    const color = paintMap.get(id);
-    showTip(ev, `${name}${color ? ' (' + color + ')' : ''}`);
-    updateInfobar(name);
-  });
-  dragDiv.addEventListener('mouseleave', () => { hideTip(); updateInfobar('──'); });
+  // ダブルクリックズームを無効化
+  svgSel.on('dblclick.zoom', null);
 
   buildProjection();
 }
@@ -513,19 +442,16 @@ function initD3Map(){
 function buildProjection(){
   const wrap = document.getElementById('map-wrap');
   const W = wrap.clientWidth, H = wrap.clientHeight;
-  // clipPathのrectをがめんサイズに合わせる
-  const clipRect = document.getElementById('map-clip-rect');
-  if (clipRect) { clipRect.setAttribute('width', W); clipRect.setAttribute('height', H); }
-  // geoMercatorのデフォルトscale=153はwidth=960むけ
-  const scale = (W / 960) * 153;
+
+  // geoMercator デフォルトで scale=153, translate=[480,250]
+  // W/H にあわせて スケールする
+  const scale = Math.min(W, H * 1.6) / 5.5;
+  // ちゅうしん経度は rotate で かいてん（translate は がめん ちゅうおう）
   projection = d3.geoMercator()
     .rotate([-currentCenterLng, 0])
     .scale(scale)
-    .translate([W / 2, H / 2]);
-  // D3のgeoPathにもclipExtentをつける（がめんそとのパスをえがかない）
-  pathGen = d3.geoPath().projection(projection).pointRadius(2);
-  // projectionにclipExtent
-  projection.clipExtent([[0, 0], [W, H]]);
+    .translate([W / 2, H / 2 + H * 0.05]);
+
   pathGen = d3.geoPath().projection(projection);
 }
 
@@ -558,41 +484,9 @@ function setCenter(lng){
   resetView();
 }
 
-// ドラッグ中かどうか
-let isDragging = false;
-
-function paintCountry(d, el) {
-  const id = getCountryId(d);
-  if (!id) return;
-  if (eyedropperMode) {
-    const col = paintMap.get(id);
-    if (col) { setCurrentColor(col); toast('いろ すいとたヨ！ ' + col); }
-    eyedropperMode = false;
-    document.getElementById('btn-eyedropper').classList.remove('active');
-    document.getElementById('map-svg').style.cursor = 'grab';
-    return;
-  }
-  const isEraseStep = autoColorEnabled && autoColorIndex >= autoColorSlots.length;
-  if (isEraseStep) {
-    paintMap.delete(id);
-    d3.select(el).attr('fill', landColor);
-    updateSidebar(); updateStats(); advanceAutoColor();
-    return;
-  }
-  const alreadySame = paintMap.get(id) === currentColor;
-  if (alreadySame) {
-    paintMap.delete(id);
-    d3.select(el).attr('fill', landColor);
-  } else {
-    paintMap.set(id, currentColor);
-    d3.select(el).attr('fill', currentColor);
-  }
-  updateSidebar(); updateStats();
-  if (!alreadySame) advanceAutoColor();
-}
-
 function redrawAll(){
   if(!countryFeatures.length) return;
+  // いちど ぜんぶ けして つくりなおす（クロージャバグ かいひ）
   gCountries.selectAll('.country-path').remove();
 
   gCountries.selectAll('.country-path')
@@ -602,20 +496,30 @@ function redrawAll(){
     .attr('d', d => pathGen(d) || '')
     .attr('fill', d => paintMap.get(getCountryId(d)) || landColor)
     .attr('stroke', 'none')
-    .style('pointer-events', 'all')
+    .style('cursor','pointer')
     .on('mouseover', function(ev, d){
-      const name = getCountryName(d);
-      const id = getCountryId(d);
-      const color = paintMap.get(id);
-      showTip(ev, `${name}${color ? ' (' + color + ')' : ''}`);
+      const name=getCountryName(d), id=getCountryId(d), color=paintMap.get(id);
+      showTip(ev,`${name}${color?' ('+color+')':''}`);
       updateInfobar(name);
     })
-    .on('mousemove', ev => moveTip(ev))
-    .on('mouseout', () => { hideTip(); updateInfobar('──'); })
-    .on('click', function(ev, d) {
+    .on('mousemove', ev=>moveTip(ev))
+    .on('mouseout', ()=>{hideTip();updateInfobar('──');})
+    .on('click', function(ev, d){
       ev.stopPropagation();
-      if (isDragging) return;
-      paintCountry(d, this);
+      const id=getCountryId(d); if(!id)return;
+      if(eyedropperMode){
+        const col=paintMap.get(id);
+        if(col){setCurrentColor(col);toast('いろ すいとたヨ！ '+col);}
+        eyedropperMode=false;document.getElementById('btn-eyedropper').classList.remove('active');document.getElementById('map-svg').style.cursor='grab';
+        return;
+      }
+      const isEraseStep=autoColorEnabled&&autoColorIndex>=autoColorSlots.length;
+      if(isEraseStep){paintMap.delete(id);d3.select(this).attr('fill',landColor);updateSidebar();updateStats();advanceAutoColor();return;}
+      const alreadySame=paintMap.get(id)===currentColor;
+      if(alreadySame){paintMap.delete(id);d3.select(this).attr('fill',landColor);}
+      else{paintMap.set(id,currentColor);d3.select(this).attr('fill',currentColor);}
+      updateSidebar();updateStats();
+      if(!alreadySame)advanceAutoColor();
     });
 
   redrawBorders();
@@ -623,25 +527,15 @@ function redrawAll(){
 
 function redrawBorders(){
   gBorders.selectAll('*').remove();
-  if(!countryTopo||!pathGen) return;
+  if(!borderOn||borderWidth<=0||!countryTopo||!pathGen)return;
   try{
-    // くにざかいせん（となりあう くに の さかい）
-    if(borderOn && borderWidth > 0){
-      const innerMesh = topojson.mesh(countryTopo, countryTopo.objects.countries, (a,b) => a !== b);
-      gBorders.append('path')
-        .attr('class','border-path')
-        .attr('d', pathGen(innerMesh) || '')
-        .attr('stroke', borderColor)
-        .attr('stroke-width', borderWidth);
-    }
-    // かいがんせん（そとわく）はつねに ひょうじ
-    const outerMesh = topojson.mesh(countryTopo, countryTopo.objects.countries, (a,b) => a === b);
+    const mesh=topojson.mesh(countryTopo,countryTopo.objects.countries,(a,b)=>a!==b);
     gBorders.append('path')
-      .attr('class','border-path coastline')
-      .attr('d', pathGen(outerMesh) || '')
-      .attr('stroke', borderColor)
-      .attr('stroke-width', borderWidth > 0 ? borderWidth : 0.5);
-  }catch(e){ console.error('border error:', e); }
+      .attr('class','border-path')
+      .attr('d',pathGen(mesh)||'')
+      .attr('stroke',borderColor)
+      .attr('stroke-width',borderWidth);
+  }catch(e){}
 }
 
 // =====================================================
