@@ -117,7 +117,7 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
   <button class="hamburger" id="hamburger" onclick="toggleDrawer()"><span></span><span></span><span></span></button>
   <div class="logo">🌍</div>
   <div>
-    <div class="title">せかい ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.2.8</span></div>
+    <div class="title">せかい ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.2.9</span></div>
     <div class="subtitle">せかいの くに・しゅう ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -415,15 +415,15 @@ function initD3Map(){
   gCountries = d3.select('#g-countries');
   gBorders   = d3.select('#g-borders');
 
-  // D3 zoom - ポリゴン上のクリックはzoomに渡さない
+  // D3 zoom - wheelとドラッグのみ、クリックは通さない
   const zoom = d3.zoom()
     .scaleExtent([0.5, 20])
     .filter(event => {
-      // country-pathのクリックはzoomに渡さない（ぬりのため）
-      if (event.target && event.target.classList.contains('country-path')) {
-        return event.type === 'wheel' || event.type === 'touchstart';
-      }
-      return !event.button;
+      // クリック（mousedown+mouseup）はzoomに渡さない
+      // ホイール・ドラッグ（mousemove中）はzoomに渡す
+      if (event.type === 'mousedown') return false;
+      if (event.type === 'click') return false;
+      return !event.button || event.type === 'wheel';
     })
     .on('zoom', (event) => {
       currentTransform = event.transform;
@@ -431,9 +431,40 @@ function initD3Map(){
       gBorders.attr('transform', currentTransform);
     });
   svgSel.call(zoom);
-
-  // ダブルクリックズームを無効化
   svgSel.on('dblclick.zoom', null);
+
+  // ドラッグ は SVG に てがきで つける
+  let dragStart = null;
+  svgSel.on('mousedown', (ev) => {
+    dragStart = { x: ev.clientX, y: ev.clientY, tx: currentTransform.x, ty: currentTransform.y };
+    svgSel.style('cursor','grabbing');
+  });
+  svgSel.on('mousemove', (ev) => {
+    if (!dragStart) return;
+    const dx = ev.clientX - dragStart.x;
+    const dy = ev.clientY - dragStart.y;
+    const newT = d3.zoomIdentity
+      .translate(dragStart.tx + dx, dragStart.ty + dy)
+      .scale(currentTransform.k);
+    currentTransform = newT;
+    gCountries.attr('transform', newT);
+    gBorders.attr('transform', newT);
+  });
+  svgSel.on('mouseup mouseleave', (ev) => {
+    dragStart = null;
+    svgSel.style('cursor','grab');
+  });
+
+  // クリックは SVG レベルで ハンドル
+  let mouseMovedDist = 0;
+  svgSel.on('mousedown.clicktrack', () => { mouseMovedDist = 0; });
+  svgSel.on('mousemove.clicktrack', (ev) => {
+    if (ev.buttons) mouseMovedDist += Math.abs(ev.movementX) + Math.abs(ev.movementY);
+  });
+  svgSel.on('click', (ev) => {
+    if (mouseMovedDist > 5) return; // ドラッグ後は無視
+    handleMapClick(ev);
+  });
 
   buildProjection();
 }
@@ -480,10 +511,46 @@ function setCenter(lng){
   resetView();
 }
 
+// SVGクリック で くに を はんてい する
+function handleMapClick(ev) {
+  // ドラッグ後のクリックは無視
+  if (ev._isDrag) return;
+  const el = document.elementFromPoint(ev.clientX, ev.clientY);
+  if (!el || !el.classList.contains('country-path')) return;
+  const d = el.__data__;
+  if (!d) return;
+  const id = getCountryId(d);
+  if (!id) return;
+
+  if (eyedropperMode) {
+    const col = paintMap.get(id);
+    if (col) { setCurrentColor(col); toast('いろ すいとたヨ！ ' + col); }
+    eyedropperMode = false;
+    document.getElementById('btn-eyedropper').classList.remove('active');
+    document.getElementById('map-svg').style.cursor = 'grab';
+    return;
+  }
+  const isEraseStep = autoColorEnabled && autoColorIndex >= autoColorSlots.length;
+  if (isEraseStep) {
+    paintMap.delete(id);
+    d3.select(el).attr('fill', landColor);
+    updateSidebar(); updateStats(); advanceAutoColor();
+    return;
+  }
+  const alreadySame = paintMap.get(id) === currentColor;
+  if (alreadySame) {
+    paintMap.delete(id);
+    d3.select(el).attr('fill', landColor);
+  } else {
+    paintMap.set(id, currentColor);
+    d3.select(el).attr('fill', currentColor);
+  }
+  updateSidebar(); updateStats();
+  if (!alreadySame) advanceAutoColor();
+}
+
 function redrawAll(){
   if(!countryFeatures.length) return;
-
-  // いちど ぜんぶ けして つくりなおす（クロージャバグ かいひ）
   gCountries.selectAll('.country-path').remove();
 
   gCountries.selectAll('.country-path')
@@ -493,7 +560,6 @@ function redrawAll(){
     .attr('d', d => pathGen(d) || '')
     .attr('fill', d => paintMap.get(getCountryId(d)) || landColor)
     .attr('stroke', 'none')
-    .style('cursor','pointer')
     .on('mouseover', function(ev, d){
       const name = getCountryName(d);
       const id = getCountryId(d);
@@ -502,37 +568,7 @@ function redrawAll(){
       updateInfobar(name);
     })
     .on('mousemove', ev => moveTip(ev))
-    .on('mouseout', () => { hideTip(); updateInfobar('──'); })
-    .on('click', function(ev, d){
-      ev.stopPropagation();
-      const id = getCountryId(d);
-      if(!id) return;
-      if(eyedropperMode){
-        const col = paintMap.get(id);
-        if(col){ setCurrentColor(col); toast('いろ すいとたヨ！ ' + col); }
-        eyedropperMode = false;
-        document.getElementById('btn-eyedropper').classList.remove('active');
-        document.getElementById('map-svg').style.cursor = 'grab';
-        return;
-      }
-      const isEraseStep = autoColorEnabled && autoColorIndex >= autoColorSlots.length;
-      if(isEraseStep){
-        paintMap.delete(id);
-        d3.select(this).attr('fill', landColor);
-        updateSidebar(); updateStats(); advanceAutoColor();
-        return;
-      }
-      const alreadySame = paintMap.get(id) === currentColor;
-      if(alreadySame){
-        paintMap.delete(id);
-        d3.select(this).attr('fill', landColor);
-      } else {
-        paintMap.set(id, currentColor);
-        d3.select(this).attr('fill', currentColor);
-      }
-      updateSidebar(); updateStats();
-      if(!alreadySame) advanceAutoColor();
-    });
+    .on('mouseout', () => { hideTip(); updateInfobar('──'); });
 
   redrawBorders();
 }
