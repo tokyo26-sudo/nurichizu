@@ -124,7 +124,7 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
   <button class="hamburger" id="hamburger" onclick="toggleDrawer()"><span></span><span></span><span></span></button>
   <div class="logo">🌍</div>
   <div>
-    <div class="title">せかい ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v1.1.0</span></div>
+    <div class="title">せかい ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v1.1.4</span></div>
     <div class="subtitle">せかいの くに・しゅう ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -782,32 +782,34 @@ function redrawLabels() {
   gLabel.selectAll('text').remove();
   if (!labelOn || !countryFeatures.length || !d3Path) return;
   const zoom = lmap.getZoom();
+  const offset = get360Offset();
   countryFeatures.forEach(f => {
     const name = getCountryName(f);
     if (!name) return;
-    // じゅうしん けいさん（アンチメリジアン対策: 経度を -180〜180 に クランプ）
     try {
       const centroid = d3.geoCentroid(f);
       if (!centroid || isNaN(centroid[0]) || isNaN(centroid[1])) return;
-      // ズームレベルが ひくいとき ちいさい くには スキップ
       const area = d3.geoArea(f);
       if (zoom < 3 && area < 0.003) return;
       if (zoom < 4 && area < 0.0005) return;
       const pt = d3Projection(centroid);
       if (!pt) return;
-      gLabel.append('text')
-        .attr('x', pt[0])
-        .attr('y', pt[1])
-        .attr('text-anchor', 'middle')
-        .attr('dominant-baseline', 'middle')
-        .attr('font-size', labelSize)
-        .attr('font-family', "'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif")
-        .attr('fill', labelColor)
-        .attr('stroke', 'white')
-        .attr('stroke-width', '2')
-        .attr('paint-order', 'stroke')
-        .style('pointer-events', 'none')
-        .text(name);
+      // まんなか・みぎ・ひだり の 3か所に ラベル かく
+      [0, offset, -offset].forEach(dx => {
+        gLabel.append('text')
+          .attr('x', pt[0] + dx)
+          .attr('y', pt[1])
+          .attr('text-anchor', 'middle')
+          .attr('dominant-baseline', 'middle')
+          .attr('font-size', labelSize)
+          .attr('font-family', "'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif")
+          .attr('fill', labelColor)
+          .attr('stroke', 'white')
+          .attr('stroke-width', '2')
+          .attr('paint-order', 'stroke')
+          .style('pointer-events', 'none')
+          .text(name);
+      });
     } catch(e) {}
   });
 }
@@ -875,7 +877,8 @@ const COUNTRY_NAMES = {
   "894":"ザンビア","716":"ジンバブエ",
   "344":"香港","446":"マカオ","492":"モナコ","674":"サンマリノ",
   "336":"バチカン","438":"リヒテンシュタイン","352":"アイスランド",
-  "304":"グリーンランド","048":"バーレーン","498":"モルドバ",
+  "304":"グリーンランド","048":"バーレーン","498":"モルドバ","338":"ジョージア",
+  "204":"ベナン","417":"キルギス","442":"ルクセンブルク","540":"ニューカレドニア",
   "008":"アルバニア","020":"アンドラ","040":"オーストリア",
   "191":"クロアチア","196":"キプロス","703":"スロバキア","705":"スロベニア",
   "807":"北マケドニア","499":"モンテネグロ","688":"セルビア","070":"ボスニア・ヘルツェゴビナ",
@@ -906,8 +909,11 @@ const COUNTRY_NAMES = {
   "504":"モロッコ","508":"モザンビーク","516":"ナミビア","562":"ニジェール",
   "566":"ナイジェリア","646":"ルワンダ","678":"サントメ・プリンシペ",
   "686":"セネガル","694":"シエラレオネ","706":"ソマリア","710":"南アフリカ",
-  "728":"南スーダン","729":"スーダン","748":"スワジランド","834":"タンザニア",
+  "728":"南スーダン","729":"スーダン","748":"エスワティニ","834":"タンザニア",
   "768":"トーゴ","788":"チュニジア","800":"ウガンダ","894":"ザンビア","716":"ジンバブエ",
+  "010":"南極","brandnew":"","430":"リベリア","478":"モーリタニア","480":"モーリシャス",
+  "132":"カーボベルデ","174":"コモロ","226":"赤道ギニア","262":"ジブチ","270":"ガンビア",
+  "646":"ルワンダ","678":"サントメ・プリンシペ","686":"セネガル","724":"スペイン",
 };
 
 // =====================================================
