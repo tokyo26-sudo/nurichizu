@@ -199,7 +199,7 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
   <button class="hamburger" id="hamburger" onclick="toggleDrawer()"><span></span><span></span><span></span></button>
   <div class="logo">🗺️</div>
   <div>
-    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.6.0</span></div>
+    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v1.0.0</span></div>
     <div class="subtitle">れきしてき ぎょうせいくいき ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -234,7 +234,7 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
       <div class="sec-h">レイヤ</div>
     </div>
     <div id="layer-list" class="layer-list"></div>
-    <button class="add-layer-btn" onclick="addLayer()">＋ レイヤ ついか</button>
+    <button class="add-layer-btn" id="add-layer-btn" onclick="addLayer()">＋ レイヤ ついか</button>
 
     <!-- ぬり モード -->
     <div class="sec">
@@ -293,7 +293,7 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
       </div>
       <div style="display:flex;flex-direction:column;gap:7px;" id="border-detail">
         <div class="color-row">
-          <div class="color-preview" id="borderMuniPreview" style="background:#b09080;cursor:pointer;" onclick="openColorPopup('borderMuniPreview', borderMuniColor, c => setBorderMuniColor(c))"></div>
+          <div class="color-preview" id="borderMuniPreview" style="background:#b09080;cursor:pointer;" onclick="const _al=getActiveLayer(); openColorPopup('borderMuniPreview', _al ? _al.borderColor : '#b09080', c => setBorderMuniColor(c))"></div>
           <span style="font-size:12px;color:var(--muted);">いろ</span>
         </div>
         <div class="slider-row">
@@ -675,6 +675,10 @@ function createLayerObj(name, era) {
     prefTopoData: [],
     visible: true,
     opacity: 75,
+    borderColor: '#b09080',
+    borderWidth: 0.4,
+    borderDash: 'none',
+    borderOn: true,
     gPoly: null,
     gBorder: null,
     gLabels: null,
@@ -709,22 +713,27 @@ function rebuildSvgGroups() {
 
 function setActiveLayer(id) {
   activeLayerId = id;
-  // ポインタイベント きりかえ
   layers.forEach(layer => {
     const wrap = svgOverlay.select(`.g-layer-wrap[data-lid="${layer.id}"]`);
-    if (!wrap.empty()) {
-      wrap.style('pointer-events', layer.id === id ? 'all' : 'none');
-    }
+    if (!wrap.empty()) wrap.style('pointer-events', layer.id === id ? 'all' : 'none');
   });
   renderLayerList();
-  // アクティブレイヤの currentEra に あわせて ぬりモド ボタン こうしん
   const al = getActiveLayer();
-  if (al) updateKuniButton(al.era);
+  if (al) { updateKuniButton(al.era); syncBorderUI(al); }
   updateStats();
 }
 
+function syncBorderUI(layer) {
+  document.getElementById('borderMuniPreview').style.background = layer.borderColor;
+  document.getElementById('border-muni-width').value = layer.borderWidth;
+  document.getElementById('border-muni-width-val').textContent = layer.borderWidth;
+  document.getElementById('border-muni-dash').value = layer.borderDash;
+  document.getElementById('border-toggle').checked = layer.borderOn;
+  document.getElementById('border-detail').style.opacity = layer.borderOn ? '1' : '0.4';
+}
+
 function addLayer() {
-  if (layers.length >= 4) { toast('レイヤは さいだい 4まいまでデスヨ'); return; }
+  if (layers.length >= 2) { toast('レイヤは さいだい 2まいまでデスヨ'); return; }
   const layer = createLayerObj('レイヤ ' + (layers.length + 1), '1920');
   layers.push(layer);
   rebuildSvgGroups();
@@ -804,6 +813,9 @@ function setLayerEra(id, era) {
 function renderLayerList() {
   const el = document.getElementById('layer-list');
   el.innerHTML = '';
+  // ＋ボタン：2まい いじょう のとき かくす
+  const addBtn = document.getElementById('add-layer-btn');
+  if (addBtn) addBtn.style.display = layers.length >= 2 ? 'none' : '';
   layers.slice().reverse().forEach((layer, revIdx) => {
     const realIdx = layers.length - 1 - revIdx;
     const card = document.createElement('div');
@@ -820,6 +832,8 @@ function renderLayerList() {
 
     const nameEl = document.createElement('span');
     nameEl.className = 'layer-name'; nameEl.textContent = layer.name;
+    nameEl.style.cursor = 'pointer';
+    nameEl.onclick = e => { e.stopPropagation(); setActiveLayer(layer.id); };
 
     if (layer.id === activeLayerId) {
       const badge = document.createElement('span');
@@ -837,18 +851,18 @@ function renderLayerList() {
     visBtn.onclick = e => { e.stopPropagation(); toggleLayerVisible(layer.id); };
     hdr.appendChild(visBtn);
 
-    // ↑ ボタン
+    // ↑ ボタン（画面うえ = はいれつの さいご）
     const upBtn = document.createElement('button');
     upBtn.className = 'layer-btn'; upBtn.textContent = '↑'; upBtn.title = 'うえに いどう';
     upBtn.disabled = (realIdx === layers.length - 1);
-    upBtn.onclick = e => { e.stopPropagation(); moveLayerUp(layer.id); };
+    upBtn.onclick = e => { e.stopPropagation(); moveLayerDown(layer.id); };
     hdr.appendChild(upBtn);
 
-    // ↓ ボタン
+    // ↓ ボタン（画面した = はいれつの さいしょ）
     const dnBtn = document.createElement('button');
     dnBtn.className = 'layer-btn'; dnBtn.textContent = '↓'; dnBtn.title = 'したに いどう';
     dnBtn.disabled = (realIdx === 0);
-    dnBtn.onclick = e => { e.stopPropagation(); moveLayerDown(layer.id); };
+    dnBtn.onclick = e => { e.stopPropagation(); moveLayerUp(layer.id); };
     hdr.appendChild(dnBtn);
 
     // × ボタン
@@ -1016,16 +1030,32 @@ function changeTile(key) {
   tileLayer = L.tileLayer(TILE_URLS[key], { attribution: TILE_ATTRS[key], maxZoom: 18, opacity }).addTo(lmap);
 }
 
-let borderMuniColor = '#b09080', borderMuniWidth = 0.4, borderMuniDash = 'none';
+// さかいせん せてい は レイヤオブジェクト に いどう ずみ
 let showLabel = false, labelSize = 8.0, labelColor = 'rgba(40,32,20,0.8)';
 let landColor = '#dcd2c8', seaColor = '#c8d8e8';
 
-function setBorderMuniColor(c) { borderMuniColor = c; document.getElementById('borderMuniPreview').style.background = c; layers.forEach(l => redrawBorders(l)); }
-function setBorderMuniWidth(v) { borderMuniWidth = parseFloat(v); document.getElementById('border-muni-width-val').textContent = v; layers.forEach(l => redrawBorders(l)); }
-function setBorderMuniDash(v)  { borderMuniDash = v; layers.forEach(l => redrawBorders(l)); }
+function setBorderMuniColor(c) {
+  const al = getActiveLayer(); if (!al) return;
+  al.borderColor = c;
+  document.getElementById('borderMuniPreview').style.background = c;
+  redrawBorders(al);
+}
+function setBorderMuniWidth(v) {
+  const al = getActiveLayer(); if (!al) return;
+  al.borderWidth = parseFloat(v);
+  document.getElementById('border-muni-width-val').textContent = v;
+  redrawBorders(al);
+}
+function setBorderMuniDash(v) {
+  const al = getActiveLayer(); if (!al) return;
+  al.borderDash = v;
+  redrawBorders(al);
+}
 function toggleBorder(on) {
+  const al = getActiveLayer(); if (!al) return;
+  al.borderOn = on;
   document.getElementById('border-detail').style.opacity = on ? '1' : '0.4';
-  layers.forEach(l => l.gBorder && l.gBorder.style('display', on ? null : 'none'));
+  al.gBorder && al.gBorder.style('display', on ? null : 'none');
 }
 function setLandColor(c) {
   landColor = c;
@@ -1218,15 +1248,15 @@ function geoPathFnGeo(geom) {
 function redrawBorders(layer) {
   if (!layer || !layer.gBorder) return;
   layer.gBorder.selectAll('path').remove();
-  if (borderMuniWidth <= 0 || !layer.features.length) return;
+  if (!layer.borderOn || layer.borderWidth <= 0 || !layer.features.length) return;
   let d = '';
   if (layer.prefTopoData.length > 0) d = topoMeshPath(layer);
   else d = layer.features.map(f => geoPathFn(f)).filter(Boolean).join('');
   if (!d) return;
   layer.gBorder.append('path')
     .attr('d', d).attr('fill', 'none')
-    .attr('stroke', borderMuniColor).attr('stroke-width', borderMuniWidth)
-    .attr('stroke-dasharray', borderMuniDash === 'none' ? null : borderMuniDash)
+    .attr('stroke', layer.borderColor).attr('stroke-width', layer.borderWidth)
+    .attr('stroke-dasharray', layer.borderDash === 'none' ? null : layer.borderDash)
     .attr('stroke-linejoin', 'round').attr('stroke-linecap', 'round')
     .style('pointer-events', 'none');
 }
@@ -1647,6 +1677,7 @@ function saveData() {
       id: l.id, name: l.name, era: l.era,
       activePrefs: l.activePrefs, paintMap: Object.fromEntries(l.paintMap),
       visible: l.visible, opacity: l.opacity,
+      borderColor: l.borderColor, borderWidth: l.borderWidth, borderDash: l.borderDash, borderOn: l.borderOn,
     })),
     activeLayerId,
     texts: textItems,
@@ -1679,6 +1710,10 @@ async function loadData(ev) {
           layer.activePrefs = ld.activePrefs || [];
           layer.visible = ld.visible !== false;
           layer.opacity = ld.opacity || 75;
+          if (ld.borderColor) layer.borderColor = ld.borderColor;
+          if (ld.borderWidth !== undefined) layer.borderWidth = ld.borderWidth;
+          if (ld.borderDash) layer.borderDash = ld.borderDash;
+          if (ld.borderOn !== undefined) layer.borderOn = ld.borderOn;
           Object.entries(ld.paintMap || {}).forEach(([k,v]) => layer.paintMap.set(k,v));
           layers.push(layer);
         }
@@ -1792,11 +1827,11 @@ function captureSVG(mode) {
       members.forEach(f => { const d = geoPathFn(f); if (d) svg += `<path fill="${color}" d="${d}"/>`; });
       svg += `</g>`;
     });
-    if (borderMuniWidth > 0) {
+    if (al.borderOn && al.borderWidth > 0) {
       const painted = al.features.filter(f => al.paintMap.has(getUniqueId(f)));
       const ap = painted.map(f => geoPathFn(f)).filter(Boolean).join('');
-      const dash = borderMuniDash !== 'none' ? ` stroke-dasharray="${borderMuniDash}"` : '';
-      svg += `<path fill="none" stroke="${borderMuniColor}" stroke-width="${borderMuniWidth}"${dash} d="${ap}"/>`;
+      const dash = al.borderDash !== 'none' ? ` stroke-dasharray="${al.borderDash}"` : '';
+      svg += `<path fill="none" stroke="${al.borderColor}" stroke-width="${al.borderWidth}"${dash} d="${ap}"/>`;
     }
   }
 
