@@ -8,6 +8,7 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <script src="https://unpkg.com/topojson-client@3/dist/topojson-client.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/proj4@2.9.0/dist/proj4.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
 :root {
@@ -613,87 +614,109 @@ async function loadProvinceData(iso2) {
   const res = await fetch(url);
   if (!res.ok) throw new Error('fetch failed: ' + url);
   const text = await res.text();
-  // Highcharts.maps["..."] = { ... }; の形式をパース
-  const m = text.match(/Highcharts\.maps\[.*?\]\s*=\s*(\{[\s\S]*\});?\s*$/);
+  const m = text.match(/Highcharts\.maps\[.*?\]\s*=\s*([\s\S]*?)(?:;\s*)?$/);
   if (!m) throw new Error('parse failed');
-  const data = JSON.parse(m[1]);
+  const data = JSON.parse(m[1].replace(/;\s*$/, ''));
+  const transforms = data['hc-transform'] || {};
+  const defaultTf = transforms['default'];
+
   // admin1 の features だけ とる
   const features = (data.features || []).filter(f => {
     const g = f.properties && f.properties['hc-group'];
     return g === 'admin1';
   });
-  // Highcharts 独自の ローカル座標 → WGS84 に へんかん
-  const tf = data['hc-transform'] && data['hc-transform']['default'];
-  if (tf) {
-    features.forEach(f => {
-      convertHCGeometry(f.geometry, tf);
-    });
-  }
+
+  features.forEach(f => {
+    const hcKey = f.properties && f.properties['hc-key'];
+    let tf = defaultTf;
+    if (hcKey && Object.keys(transforms).length > 1) {
+      for (const [tKey, tVal] of Object.entries(transforms)) {
+        if (tKey === 'default') continue;
+        // tKey: "xx-all-{region}" → region の先頭2文字が hcKey の suffix と一致するか
+        // 例: "us-all-alaska" → "al" → hcKey="us-ak" とは一致しない
+        // 例: "us-all-alaska" → suffix="alaska" → hcKey="us-ak" = cc+"-"+"ak"
+        // suffix を取り出して cc+"-"+suffix[0:2] と比較
+        const regionFull = tKey.replace(cc + '-all-', '');
+        const regionShort = cc + '-' + regionFull.slice(0, 2);
+        if (hcKey === regionShort || hcKey.startsWith(regionShort + '-')) {
+          tf = tVal; break;
+        }
+        // jp の場合: "jp-all-ryukyu" → "jp-ry" → hcKey="jp-3461" とは一致しない
+        // hitZone による判定を追加
+        if (tVal.hitZone && tVal.hitZone.coordinates) {
+          const poly = tVal.hitZone.coordinates[0];
+          if (poly && pointInPolygon2D(f, poly, defaultTf)) {
+            tf = tVal; break;
+          }
+        }
+      }
+    }
+    if (tf) convertHCGeometry(f.geometry, tf);
+  });
+
   provinceFeatureCache[iso2] = features;
 }
 
 // Highcharts ローカル座標 → WGS84 経緯度 へんかん
+// 正しい式: highmaps.src.js line 52091-52092 より
+//   x_proj = ((px - jsonmarginX) / jsonres - xpan) / scale + xoffset
+//   y_proj = ((py - jsonmarginY) / jsonres + ypan) / scale + yoffset
 function convertHCGeometry(geom, tf) {
   if (!geom) return;
-  const { scale, jsonres, jsonmarginX, jsonmarginY, xoffset, yoffset, crs } = tf;
-  // proj4 つかって UTM → WGS84
-  // まず ローカルピクセル → メートル へんかん
-  // x_m = (x - jsonmarginX) / jsonres * scale * 1000 + xoffset ... ではなく
-  // Highcharts の 変換式: x_m = (hc_x - jsonmarginX) / jsonres / scale + xoffset
+  const { scale, jsonres, jsonmarginX=0, jsonmarginY=0, xoffset=0, yoffset=0, crs, xpan=0, ypan=0 } = tf;
+
   function toLatLng(hcx, hcy) {
-    const xm = (hcx - jsonmarginX) / jsonres / scale + xoffset;
-    const ym = (jsonmarginY - hcy) / jsonres / scale + yoffset;
+    if (!crs) return [hcx, hcy]; // CRS なし = すでに WGS84
+    const xm = ((hcx - jsonmarginX) / jsonres - xpan) / scale + xoffset;
+    const ym = ((hcy - jsonmarginY) / jsonres + ypan) / scale + yoffset;
     return proj4WGS84(crs, xm, ym);
   }
   function convertCoords(coords) {
-    return coords.map(c => {
-      if (Array.isArray(c[0])) return convertCoords(c);
-      return toLatLng(c[0], c[1]);
-    });
+    return coords.map(c => Array.isArray(c[0]) ? convertCoords(c) : toLatLng(c[0], c[1]));
   }
   if (geom.type === 'Polygon') {
     geom.coordinates = convertCoords(geom.coordinates);
   } else if (geom.type === 'MultiPolygon') {
     geom.coordinates = geom.coordinates.map(poly => convertCoords(poly));
+  } else if (geom.type === 'LineString') {
+    geom.coordinates = geom.coordinates.map(c => toLatLng(c[0], c[1]));
   }
 }
 
-// 簡易 proj4 UTM → WGS84 へんかん
+// Highcharts hitZone（2D ポリゴン）に feature の centroid が含まれるか判定
+function pointInPolygon2D(feature, poly2d, defaultTf) {
+  // feature の geometry から おおよその centroid を求める
+  try {
+    const geom = feature.geometry;
+    let ring;
+    if (geom.type === 'MultiPolygon') ring = geom.coordinates[0][0];
+    else if (geom.type === 'Polygon') ring = geom.coordinates[0];
+    else return false;
+    const cx = ring.reduce((s,p)=>s+p[0],0)/ring.length;
+    const cy = ring.reduce((s,p)=>s+p[1],0)/ring.length;
+    // ray casting
+    let inside = false;
+    for (let i=0, j=poly2d.length-1; i<poly2d.length; j=i++) {
+      const xi=poly2d[i][0], yi=poly2d[i][1], xj=poly2d[j][0], yj=poly2d[j][1];
+      if (((yi>cy)!==(yj>cy)) && (cx<(xj-xi)*(cy-yi)/(yj-yi)+xi)) inside=!inside;
+    }
+    return inside;
+  } catch(e) { return false; }
+}
+
+// proj4js で CRS → WGS84 へんかん（キャシュ あり）
+const _proj4Cache = {};
 function proj4WGS84(crsStr, xm, ym) {
   if (!crsStr) return [0, 0];
-  // +proj=utm +zone=N を きんじ
-  const zoneM = crsStr.match(/\+zone=(\d+)/);
-  const southM = /\+south/.test(crsStr);
-  if (!zoneM) {
-    // longlat or unknown: そのまま
-    return [xm, ym];
+  try {
+    if (!_proj4Cache[crsStr]) {
+      _proj4Cache[crsStr] = proj4(crsStr, 'WGS84');
+    }
+    const [lon, lat] = _proj4Cache[crsStr].forward([xm, ym]);
+    return [lon, lat];
+  } catch(e) {
+    return [0, 0];
   }
-  const zone = parseInt(zoneM[1]);
-  return utmToLatLng(xm, ym, zone, southM);
-}
-
-function utmToLatLng(easting, northing, zone, isSouth) {
-  const k0 = 0.9996;
-  const a = 6378137.0;
-  const e2 = 0.00669437999014;
-  const e1 = (1 - Math.sqrt(1 - e2)) / (1 + Math.sqrt(1 - e2));
-  const x = easting - 500000;
-  const y = isSouth ? northing - 10000000 : northing;
-  const lon0 = (zone - 1) * 6 - 180 + 3;
-  const M = y / k0;
-  const mu = M / (a * (1 - e2/4 - 3*e2*e2/64 - 5*e2*e2*e2/256));
-  const p1 = (3*e1/2 - 27*e1*e1*e1/32) * Math.sin(2*mu);
-  const p2 = (21*e1*e1/16 - 55*e1*e1*e1*e1/32) * Math.sin(4*mu);
-  const p3 = (151*e1*e1*e1/96) * Math.sin(6*mu);
-  const phi1 = mu + p1 + p2 + p3;
-  const N1 = a / Math.sqrt(1 - e2*Math.sin(phi1)*Math.sin(phi1));
-  const T1 = Math.tan(phi1)*Math.tan(phi1);
-  const C1 = e2*Math.cos(phi1)*Math.cos(phi1)/(1-e2);
-  const R1 = a*(1-e2)/Math.pow(1-e2*Math.sin(phi1)*Math.sin(phi1), 1.5);
-  const D = x/(N1*k0);
-  const lat = phi1 - (N1*Math.tan(phi1)/R1)*(D*D/2-(5+3*T1+10*C1-4*C1*C1-9*e2)*D*D*D*D/24+(61+90*T1+298*C1+45*T1*T1-252*e2-3*C1*C1)*D*D*D*D*D*D/720);
-  const lon = lon0 + ((D-(1+2*T1+C1)*D*D*D/6+(5-2*C1+28*T1-3*C1*C1+8*e2+24*T1*T1)*D*D*D*D*D/120)/Math.cos(phi1)) * 180/Math.PI;
-  return [lon, lat * 180/Math.PI];
 }
 
 function renderProvinceTags() {
