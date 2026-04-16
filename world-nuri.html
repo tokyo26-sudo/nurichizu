@@ -124,7 +124,7 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
   <button class="hamburger" id="hamburger" onclick="toggleDrawer()"><span></span><span></span><span></span></button>
   <div class="logo">🌍</div>
   <div>
-    <div class="title">せかい ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v1.0.4</span></div>
+    <div class="title">せかい ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v1.0.5</span></div>
     <div class="subtitle">せかいの くに・しゅう ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -320,9 +320,9 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
     <div id="leaflet-map"></div>
     <div id="tooltip" class="tooltip"></div>
     <div class="zoom-ctrl">
-      <button class="zoom-btn" onclick="lmap.zoomIn()">＋</button>
+      <button class="zoom-btn" onclick="lmap.zoomIn(0.25)">＋</button>
       <button class="zoom-btn" onclick="lmap.setView([20,0],2)">⌂</button>
-      <button class="zoom-btn" onclick="lmap.zoomOut()">－</button>
+      <button class="zoom-btn" onclick="lmap.zoomOut(0.25)">－</button>
     </div>
   </div>
 </div>
@@ -567,7 +567,7 @@ function setMapCenter(lng) {
 }
 
 function initMap() {
-  lmap = L.map('leaflet-map', { center:[20,0], zoom:2, zoomControl:false });
+  lmap = L.map('leaflet-map', { center:[20,0], zoom:2, zoomControl:false, zoomSnap:0.25, zoomDelta:0.25 });
   tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     maxZoom:18, opacity:0.2,
