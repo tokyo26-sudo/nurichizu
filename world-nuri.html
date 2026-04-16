@@ -70,6 +70,7 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
 #leaflet-map { width: 100%; height: 100%; background: #c8d8e8; }
 .leaflet-overlay-pane svg { pointer-events: none; }
 .leaflet-overlay-pane svg .g-poly path { pointer-events: all; }
+.leaflet-overlay-pane svg .g-province path { pointer-events: all; }
 .tooltip { position: absolute; pointer-events: none; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; font-size: 12px; line-height: 1.6; opacity: 0; transition: opacity .12s; z-index: 460; box-shadow: 0 4px 12px rgba(0,0,0,.1); white-space: nowrap; }
 .zoom-ctrl { position: absolute; right: 12px; bottom: 24px; display: flex; flex-direction: column; gap: 4px; z-index: 450; }
 .zoom-btn { width: 32px; height: 32px; border-radius: 6px; background: var(--panel); border: 1px solid var(--border); color: var(--text); font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .12px; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
@@ -124,7 +125,7 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
   <button class="hamburger" id="hamburger" onclick="toggleDrawer()"><span></span><span></span><span></span></button>
   <div class="logo">🌍</div>
   <div>
-    <div class="title">せかい ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v1.1.4</span></div>
+    <div class="title">せかい ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v1.2.0</span></div>
     <div class="subtitle">せかいの くに・しゅう ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -174,10 +175,10 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
       <div class="sec-h">ぬり モード</div>
       <div style="display:flex;gap:6px;">
         <button class="btn active" id="btn-mode-country" onclick="setPaintMode('country')" style="flex:1;">🌍 くに</button>
-        <button class="btn" id="btn-mode-province" onclick="setPaintMode('province')" style="flex:1;font-size:10px;">🗺️ しゅう<br><span style="font-size:9px;opacity:0.7;">じゅんびちゅう</span></button>
+        <button class="btn" id="btn-mode-province" onclick="setPaintMode('province')" style="flex:1;font-size:10px;">🗺️ しゅう</button>
       </div>
-      <!-- しゅうモード UI（じゅんびちゅう グレーアウト） -->
-      <div id="province-ui" class="mode-disabled" style="margin-top:8px;">
+      <!-- しゅうモード UI -->
+      <div id="province-ui" style="margin-top:8px;display:none;">
         <div style="font-size:10px;color:var(--muted);margin-bottom:4px;">しゅうデータ ある くに えらぶ</div>
         <div style="display:flex;gap:4px;">
           <select class="sel" id="province-country-sel" style="flex:1;font-size:11px;">
@@ -186,6 +187,7 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
           <button class="btn" style="margin-top:0;width:auto;padding:4px 8px;flex-shrink:0;" onclick="addProvinceLayer()">＋</button>
         </div>
         <div class="pref-tags" id="province-tags"></div>
+        <div style="font-size:10px;color:var(--muted);margin-top:5px;">※ ふくすう の くに どうじ ひょうじ OK</div>
       </div>
     </div>
 
@@ -329,9 +331,16 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
 
     <!-- ぬった リスト -->
     <div class="sec" style="flex:1;padding-bottom:0;">
-      <div class="sec-h">ぬった くに</div>
-      <div class="empty" id="mlist-empty" style="padding:12px 0;">クリックして くにを ぬってみよう！</div>
-      <div id="mlist"></div>
+      <div id="mlist-country-wrap">
+        <div class="sec-h">ぬった くに</div>
+        <div class="empty" id="mlist-empty" style="padding:12px 0;">クリックして くにを ぬってみよう！</div>
+        <div id="mlist"></div>
+      </div>
+      <div id="mlist-province-wrap" style="display:none;">
+        <div class="sec-h" style="margin-top:4px;">ぬった しゅう</div>
+        <div class="empty" id="mlist-province-empty" style="padding:12px 0;">しゅう を クリックして ぬってみよう！</div>
+        <div id="mlist-province"></div>
+      </div>
     </div>
 
   </aside>
@@ -499,18 +508,317 @@ function toggleEyedropper() {
 // =====================================================
 // ぬりモード
 // =====================================================
-// paintMode: 'country' | 'province'（しょうらいようのうち）
 let paintMode = 'country';
 
+// しゅう かんれん データ
+let provincePaintMap = new Map(); // "CC|id" → color
+let provinceLayerCountries = []; // ひょうじちゅう の くに ISO2 コドリスト
+let provinceFeatureCache = {}; // ISO2 → features[]
+let gProvince = null; // SVGレイヤ
+
+// Highcharts map-collection から よめる くに リスト（ISO2 → にほんごめい）
+const PROVINCE_COUNTRIES = {
+  "AD":"アンドラ","AE":"アラブ首長国連邦","AF":"アフガニスタン","AG":"アンティグア・バーブーダ",
+  "AL":"アルバニア","AM":"アルメニア","AO":"アンゴラ","AR":"アルゼンチン","AS":"アメリカ領サモア",
+  "AT":"オーストリア","AU":"オーストラリア","AZ":"アゼルバイジャン","BA":"ボスニア・ヘルツェゴビナ",
+  "BB":"バルバドス","BD":"バングラデシュ","BE":"ベルギー","BF":"ブルキナファソ","BG":"ブルガリア",
+  "BH":"バーレーン","BI":"ブルンジ","BJ":"ベナン","BN":"ブルネイ","BO":"ボリビア","BR":"ブラジル",
+  "BS":"バハマ","BT":"ブータン","BW":"ボツワナ","BY":"ベラルーシ","BZ":"ベリーズ","CA":"カナダ",
+  "CD":"コンゴ民主共和国","CF":"中央アフリカ","CG":"コンゴ共和国","CH":"スイス","CI":"コートジボワール",
+  "CK":"クック諸島","CL":"チリ","CM":"カメルーン","CN":"中国","CO":"コロンビア","CR":"コスタリカ",
+  "CU":"キューバ","CV":"カーボベルデ","CY":"キプロス","CZ":"チェコ","DE":"ドイツ","DJ":"ジブチ",
+  "DK":"デンマーク","DM":"ドミニカ","DO":"ドミニカ共和国","DZ":"アルジェリア","EC":"エクアドル",
+  "EE":"エストニア","EG":"エジプト","EH":"西サハラ","ER":"エリトリア","ES":"スペイン","ET":"エチオピア",
+  "FI":"フィンランド","FJ":"フィジー","FO":"フェロー諸島","FR":"フランス","GA":"ガボン",
+  "GB":"イギリス","GD":"グレナダ","GE":"ジョージア","GH":"ガーナ","GL":"グリーンランド",
+  "GM":"ガンビア","GN":"ギニア","GQ":"赤道ギニア","GR":"ギリシャ","GT":"グアテマラ","GU":"グアム",
+  "GW":"ギニアビサウ","GY":"ガイアナ","HN":"ホンジュラス","HR":"クロアチア","HT":"ハイチ",
+  "HU":"ハンガリー","ID":"インドネシア","IE":"アイルランド","IL":"イスラエル","IN":"インド",
+  "IQ":"イラク","IR":"イラン","IS":"アイスランド","IT":"イタリア","JM":"ジャマイカ","JO":"ヨルダン",
+  "JP":"日本","KE":"ケニア","KG":"キルギス","KH":"カンボジア","KM":"コモロ","KN":"セントクリストファー・ネービス",
+  "KP":"北朝鮮","KR":"韓国","KV":"コソボ","KW":"クウェート","KZ":"カザフスタン","LA":"ラオス",
+  "LB":"レバノン","LC":"セントルシア","LI":"リヒテンシュタイン","LK":"スリランカ","LR":"リベリア",
+  "LS":"レソト","LT":"リトアニア","LU":"ルクセンブルク","LV":"ラトビア","LY":"リビア",
+  "MA":"モロッコ","MC":"モナコ","MD":"モルドバ","ME":"モンテネグロ","MG":"マダガスカル",
+  "MK":"北マケドニア","ML":"マリ","MM":"ミャンマー","MN":"モンゴル","MP":"北マリアナ諸島",
+  "MR":"モーリタニア","MT":"マルタ","MU":"モーリシャス","MW":"マラウイ","MX":"メキシコ",
+  "MY":"マレーシア","MZ":"モザンビーク","NA":"ナミビア","NC":"ニューカレドニア","NE":"ニジェール",
+  "NG":"ナイジェリア","NI":"ニカラグア","NL":"オランダ","NO":"ノルウェー","NP":"ネパール",
+  "NR":"ナウル","NZ":"ニュージーランド","OM":"オマーン","PA":"パナマ","PE":"ペルー",
+  "PG":"パプアニューギニア","PH":"フィリピン","PK":"パキスタン","PL":"ポーランド",
+  "PR":"プエルトリコ","PT":"ポルトガル","PW":"パラオ","PY":"パラグアイ","QA":"カタール",
+  "RO":"ルーマニア","RS":"セルビア","RU":"ロシア","RW":"ルワンダ","SA":"サウジアラビア",
+  "SB":"ソロモン諸島","SC":"セーシェル","SD":"スーダン","SE":"スウェーデン","SG":"シンガポール",
+  "SI":"スロベニア","SK":"スロバキア","SL":"シエラレオネ","SM":"サンマリノ","SN":"セネガル",
+  "SO":"ソマリア","SR":"スリナム","SS":"南スーダン","ST":"サントメ・プリンシペ","SV":"エルサルバドル",
+  "SX":"ソマリランド","SY":"シリア","SZ":"エスワティニ","TD":"チャド","TF":"フランス領南方・南極地域",
+  "TG":"トーゴ","TH":"タイ","TJ":"タジキスタン","TL":"東ティモール","TM":"トルクメニスタン",
+  "TN":"チュニジア","TR":"トルコ","TT":"トリニダード・トバゴ","TW":"台湾","TZ":"タンザニア",
+  "UA":"ウクライナ","UG":"ウガンダ","US":"アメリカ","UY":"ウルグアイ","UZ":"ウズベキスタン",
+  "VC":"セントビンセント・グレナディーン","VE":"ベネズエラ","VI":"米領バージン諸島",
+  "VN":"ベトナム","VU":"バヌアツ","WF":"ウォリス・フツナ","WS":"サモア",
+  "YE":"イエメン","ZA":"南アフリカ","ZM":"ザンビア","ZW":"ジンバブエ"
+};
+
 function setPaintMode(mode) {
-  if (mode === 'province') { toast('しゅうモードは じゅんびちゅうデスヨ！'); return; }
   paintMode = mode;
   document.getElementById('btn-mode-country').classList.toggle('active', mode==='country');
   document.getElementById('btn-mode-province').classList.toggle('active', mode==='province');
+  document.getElementById('province-ui').style.display = mode==='province' ? 'block' : 'none';
+  document.getElementById('mlist-country-wrap').style.display = mode==='country' ? 'block' : 'none';
+  document.getElementById('mlist-province-wrap').style.display = mode==='province' ? 'block' : 'none';
 }
 
-// しゅうモード（しょうらいよう のこ）
-function addProvinceLayer() { toast('しゅうモードは じゅんびちゅうデスヨ！'); }
+// しゅうくに セレクト を つくる
+function buildProvinceCountrySel() {
+  const sel = document.getElementById('province-country-sel');
+  sel.innerHTML = '<option value="">── くに えらぶ ──</option>';
+  Object.entries(PROVINCE_COUNTRIES).sort((a,b)=>a[1].localeCompare(b[1],'ja')).forEach(([iso2, name])=>{
+    const flag = getFlag2(iso2);
+    const opt = document.createElement('option');
+    opt.value = iso2;
+    opt.textContent = flag + ' ' + name;
+    sel.appendChild(opt);
+  });
+}
+
+function getFlag2(iso2) {
+  if (!iso2 || iso2.length !== 2) return '';
+  return [...iso2.toUpperCase()].map(c => String.fromCodePoint(0x1F1E6 + c.charCodeAt(0) - 65)).join('');
+}
+
+async function addProvinceLayer() {
+  const sel = document.getElementById('province-country-sel');
+  const iso2 = sel.value;
+  if (!iso2) { toast('くに えらんで くださいネ！'); return; }
+  if (provinceLayerCountries.includes(iso2)) { toast('もう ついか してますヨ！'); return; }
+
+  toast('データ よみこみちゅう…');
+  try {
+    await loadProvinceData(iso2);
+    provinceLayerCountries.push(iso2);
+    renderProvinceTags();
+    drawProvinceLayer();
+    toast(PROVINCE_COUNTRIES[iso2] + ' の しゅう ついか したヨ！');
+  } catch(e) {
+    console.error(e);
+    toast('データ よみこみ しっぱい…');
+  }
+}
+
+async function loadProvinceData(iso2) {
+  if (provinceFeatureCache[iso2]) return;
+  const cc = iso2.toLowerCase();
+  const url = `https://cdn.jsdelivr.net/npm/@highcharts/map-collection@2.3.2/countries/${cc}/${cc}-all.js`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('fetch failed: ' + url);
+  const text = await res.text();
+  // Highcharts.maps["..."] = { ... }; の形式をパース
+  const m = text.match(/Highcharts\.maps\[.*?\]\s*=\s*(\{[\s\S]*\});?\s*$/);
+  if (!m) throw new Error('parse failed');
+  const data = JSON.parse(m[1]);
+  // admin1 の features だけ とる
+  const features = (data.features || []).filter(f => {
+    const g = f.properties && f.properties['hc-group'];
+    return g === 'admin1';
+  });
+  // Highcharts 独自の ローカル座標 → WGS84 に へんかん
+  const tf = data['hc-transform'] && data['hc-transform']['default'];
+  if (tf) {
+    features.forEach(f => {
+      convertHCGeometry(f.geometry, tf);
+    });
+  }
+  provinceFeatureCache[iso2] = features;
+}
+
+// Highcharts ローカル座標 → WGS84 経緯度 へんかん
+function convertHCGeometry(geom, tf) {
+  if (!geom) return;
+  const { scale, jsonres, jsonmarginX, jsonmarginY, xoffset, yoffset, crs } = tf;
+  // proj4 つかって UTM → WGS84
+  // まず ローカルピクセル → メートル へんかん
+  // x_m = (x - jsonmarginX) / jsonres * scale * 1000 + xoffset ... ではなく
+  // Highcharts の 変換式: x_m = (hc_x - jsonmarginX) / jsonres / scale + xoffset
+  function toLatLng(hcx, hcy) {
+    const xm = (hcx - jsonmarginX) / jsonres / scale + xoffset;
+    const ym = (jsonmarginY - hcy) / jsonres / scale + yoffset;
+    return proj4WGS84(crs, xm, ym);
+  }
+  function convertCoords(coords) {
+    return coords.map(c => {
+      if (Array.isArray(c[0])) return convertCoords(c);
+      return toLatLng(c[0], c[1]);
+    });
+  }
+  if (geom.type === 'Polygon') {
+    geom.coordinates = convertCoords(geom.coordinates);
+  } else if (geom.type === 'MultiPolygon') {
+    geom.coordinates = geom.coordinates.map(poly => convertCoords(poly));
+  }
+}
+
+// 簡易 proj4 UTM → WGS84 へんかん
+function proj4WGS84(crsStr, xm, ym) {
+  if (!crsStr) return [0, 0];
+  // +proj=utm +zone=N を きんじ
+  const zoneM = crsStr.match(/\+zone=(\d+)/);
+  const southM = /\+south/.test(crsStr);
+  if (!zoneM) {
+    // longlat or unknown: そのまま
+    return [xm, ym];
+  }
+  const zone = parseInt(zoneM[1]);
+  return utmToLatLng(xm, ym, zone, southM);
+}
+
+function utmToLatLng(easting, northing, zone, isSouth) {
+  const k0 = 0.9996;
+  const a = 6378137.0;
+  const e2 = 0.00669437999014;
+  const e1 = (1 - Math.sqrt(1 - e2)) / (1 + Math.sqrt(1 - e2));
+  const x = easting - 500000;
+  const y = isSouth ? northing - 10000000 : northing;
+  const lon0 = (zone - 1) * 6 - 180 + 3;
+  const M = y / k0;
+  const mu = M / (a * (1 - e2/4 - 3*e2*e2/64 - 5*e2*e2*e2/256));
+  const p1 = (3*e1/2 - 27*e1*e1*e1/32) * Math.sin(2*mu);
+  const p2 = (21*e1*e1/16 - 55*e1*e1*e1*e1/32) * Math.sin(4*mu);
+  const p3 = (151*e1*e1*e1/96) * Math.sin(6*mu);
+  const phi1 = mu + p1 + p2 + p3;
+  const N1 = a / Math.sqrt(1 - e2*Math.sin(phi1)*Math.sin(phi1));
+  const T1 = Math.tan(phi1)*Math.tan(phi1);
+  const C1 = e2*Math.cos(phi1)*Math.cos(phi1)/(1-e2);
+  const R1 = a*(1-e2)/Math.pow(1-e2*Math.sin(phi1)*Math.sin(phi1), 1.5);
+  const D = x/(N1*k0);
+  const lat = phi1 - (N1*Math.tan(phi1)/R1)*(D*D/2-(5+3*T1+10*C1-4*C1*C1-9*e2)*D*D*D*D/24+(61+90*T1+298*C1+45*T1*T1-252*e2-3*C1*C1)*D*D*D*D*D*D/720);
+  const lon = lon0 + ((D-(1+2*T1+C1)*D*D*D/6+(5-2*C1+28*T1-3*C1*C1+8*e2+24*T1*T1)*D*D*D*D*D/120)/Math.cos(phi1)) * 180/Math.PI;
+  return [lon, lat * 180/Math.PI];
+}
+
+function renderProvinceTags() {
+  const wrap = document.getElementById('province-tags');
+  wrap.innerHTML = '';
+  provinceLayerCountries.forEach(iso2 => {
+    const name = PROVINCE_COUNTRIES[iso2] || iso2;
+    const flag = getFlag2(iso2);
+    const tag = document.createElement('span');
+    tag.className = 'pref-tag active';
+    tag.innerHTML = flag + ' ' + name + ' <span style="opacity:.7;cursor:pointer;" data-iso="' + iso2 + '">✕</span>';
+    tag.querySelector('span').onclick = e => {
+      e.stopPropagation();
+      removeProvinceLayer(iso2);
+    };
+    wrap.appendChild(tag);
+  });
+}
+
+function removeProvinceLayer(iso2) {
+  provinceLayerCountries = provinceLayerCountries.filter(c => c !== iso2);
+  // その くに の しゅう をぬりデータ から さくじょ
+  for (const [k] of provincePaintMap) {
+    if (k.startsWith(iso2 + '|')) provincePaintMap.delete(k);
+  }
+  renderProvinceTags();
+  drawProvinceLayer();
+  updateProvinceSidebar();
+  toast(PROVINCE_COUNTRIES[iso2] + ' の しゅう のぞいたヨ！');
+}
+
+function drawProvinceLayer() {
+  if (!gProvince) return;
+  gProvince.selectAll('path').remove();
+  if (!d3Path) return;
+  provinceLayerCountries.forEach(iso2 => {
+    const features = provinceFeatureCache[iso2] || [];
+    features.forEach(f => {
+      const uid = iso2 + '|' + (f.id || (f.properties && f.properties['hc-key']) || '');
+      const offset = get360Offset();
+      const d1 = geoPathFn(f);
+      if (!d1) return;
+      gProvince.append('path')
+        .datum(f)
+        .attr('d', d1)
+        .attr('fill', provincePaintMap.get(uid) || landColor)
+        .attr('stroke', borderColor)
+        .attr('stroke-width', Math.max(0.3, borderWidth * 0.6))
+        .style('cursor', 'pointer')
+        .on('mouseover', function(ev, d) {
+          const name = d.properties && (d.properties.name || d.properties['woe-name'] || d.properties['hc-key']) || uid;
+          showTip(ev, name);
+          updateInfobar(name);
+        })
+        .on('mousemove', ev => moveTip(ev))
+        .on('mouseout', () => { hideTip(); updateInfobar('──'); })
+        .on('click', function(ev, d) {
+          if (ev && ev.stopPropagation) ev.stopPropagation();
+          if (eyedropperMode) {
+            const col = provincePaintMap.get(uid);
+            if (col) { setCurrentColor(col); toast('いろ すいとたヨ！ ' + col); }
+            eyedropperMode = false;
+            document.getElementById('btn-eyedropper').classList.remove('active');
+            document.getElementById('map-wrap').style.cursor = '';
+            return;
+          }
+          const isEraseStep = autoColorEnabled && autoColorIndex >= autoColorSlots.length;
+          if (isEraseStep) {
+            provincePaintMap.delete(uid);
+            d3.select(this).attr('fill', landColor);
+            updateProvinceSidebar(); advanceAutoColor();
+            return;
+          }
+          const alreadySame = provincePaintMap.get(uid) === currentColor;
+          if (alreadySame) {
+            provincePaintMap.delete(uid);
+            d3.select(this).attr('fill', landColor);
+          } else {
+            provincePaintMap.set(uid, currentColor);
+            d3.select(this).attr('fill', currentColor);
+          }
+          updateProvinceSidebar();
+          if (!alreadySame) advanceAutoColor();
+        });
+    });
+  });
+}
+
+function updateProvinceSidebar() {
+  const list = document.getElementById('mlist-province');
+  const empty = document.getElementById('mlist-province-empty');
+  if (!provincePaintMap.size) { empty.style.display = ''; list.innerHTML = ''; return; }
+  empty.style.display = 'none';
+  list.innerHTML = '';
+  const colorGroups = {};
+  for (const [uid, color] of provincePaintMap) {
+    if (!colorGroups[color]) colorGroups[color] = [];
+    const [iso2, ...rest] = uid.split('|');
+    const hcKey = rest.join('|');
+    const features = provinceFeatureCache[iso2] || [];
+    const f = features.find(ft => {
+      const fuid = iso2 + '|' + (ft.id || (ft.properties && ft.properties['hc-key']) || '');
+      return fuid === uid;
+    });
+    const name = f ? (f.properties && (f.properties.name || f.properties['woe-name'])) || hcKey : hcKey;
+    const flag = getFlag2(iso2);
+    colorGroups[color].push({ name, uid, iso2, flag, color });
+  }
+  Object.entries(colorGroups).forEach(([color, items]) => {
+    const grp = document.createElement('div');
+    grp.innerHTML = `<div class="grp-h" style="border-color:${color};color:${color};">■ ${color}</div>`;
+    items.sort((a,b) => a.name.localeCompare(b.name)).forEach(({ name, uid, flag, color: c }) => {
+      const mi = document.createElement('div'); mi.className = 'mi';
+      mi.innerHTML = `<span style="font-size:15px;line-height:1;flex-shrink:0;">${flag}</span><span class="mi-name" style="color:${c};font-weight:600;">${name}</span><span class="mi-clear" data-uid="${uid}">✕</span>`;
+      mi.querySelector('.mi-clear').onclick = e => {
+        e.stopPropagation();
+        provincePaintMap.delete(uid);
+        drawProvinceLayer();
+        updateProvinceSidebar();
+      };
+      grp.appendChild(mi);
+    });
+    list.appendChild(grp);
+  });
+}
 
 // =====================================================
 // データ
@@ -595,9 +903,11 @@ function initMap() {
   }).addTo(lmap);
   const svgLayer = L.svg({padding:0}).addTo(lmap);
   svgOverlay = d3.select(svgLayer._container);
-  gPoly   = svgOverlay.append('g').attr('class','g-poly');
-  gBorder = svgOverlay.append('g').attr('class','g-border');
-  gLabel  = svgOverlay.append('g').attr('class','g-label');
+  gPoly     = svgOverlay.append('g').attr('class','g-poly');
+  gProvince = svgOverlay.append('g').attr('class','g-province');
+  gBorder   = svgOverlay.append('g').attr('class','g-border');
+  gLabel    = svgOverlay.append('g').attr('class','g-label');
+  buildProvinceCountrySel();
   // D3 projection を はじめに つくる
   updateProjection();
   lmap.on('zoom move zoomend moveend', updateSvgOverlay);
@@ -651,6 +961,7 @@ function updateSvgOverlay() {
   if (!countryFeatures.length) return;
   updateProjection();
   gPoly.selectAll('path').each(function(d){ d3.select(this).attr('d', geoPathFn(d)); });
+  drawProvinceLayer();
   redrawBorders();
   redrawLabels();
 }
@@ -1012,7 +1323,12 @@ function updateInfobar(text) { document.getElementById('ib-name').textContent=te
 // セーブ/ロード
 // =====================================================
 function saveData() {
-  const obj = { version:1, paintMap:Object.fromEntries(paintMap) };
+  const obj = {
+    version:2,
+    paintMap:Object.fromEntries(paintMap),
+    provincePaintMap:Object.fromEntries(provincePaintMap),
+    provinceLayerCountries:[...provinceLayerCountries]
+  };
   const blob = new Blob([JSON.stringify(obj,null,2)],{type:'application/json'});
   const a = document.createElement('a'); a.href=URL.createObjectURL(blob);
   const now=new Date();
@@ -1026,6 +1342,18 @@ function loadData(ev) {
     try {
       const obj=JSON.parse(e.target.result);
       if(obj.paintMap){paintMap.clear();Object.entries(obj.paintMap).forEach(([k,v])=>paintMap.set(k,v));}
+      if(obj.provincePaintMap){
+        provincePaintMap.clear();
+        Object.entries(obj.provincePaintMap).forEach(([k,v])=>provincePaintMap.set(k,v));
+      }
+      if(obj.provinceLayerCountries && obj.provinceLayerCountries.length){
+        provinceLayerCountries = [...obj.provinceLayerCountries];
+        Promise.all(provinceLayerCountries.map(iso2=>loadProvinceData(iso2))).then(()=>{
+          renderProvinceTags();
+          drawProvinceLayer();
+          updateProvinceSidebar();
+        }).catch(e=>console.error(e));
+      }
       gPoly.selectAll('path').attr('fill',d=>paintMap.get(getCountryId(d))||landColor);
       updateSidebar(); updateStats(); toast('ロードしたヨ！');
     } catch(err){toast('よみこみ エラー…');}
@@ -1036,7 +1364,12 @@ function loadData(ev) {
 function clearAll() {
   if(!confirm('ぜんぶ クリア しますか？'))return;
   paintMap.clear();
+  provincePaintMap.clear();
+  provinceLayerCountries=[];
   gPoly.selectAll('path').attr('fill',landColor);
+  if(gProvince) gProvince.selectAll('path').remove();
+  renderProvinceTags();
+  updateProvinceSidebar();
   autoColorEnabled=false; autoColorIndex=0;
   autoColorSlots=['#e05030','#2080c0','#60a840','#d4b020'];
   document.getElementById('auto-color-toggle').checked=false;
