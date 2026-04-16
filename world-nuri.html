@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>せかい ぬりちず</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://unpkg.com/topojson-client@3/dist/topojson-client.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+:root {
+  --bg: #f7f4ef; --panel: #ffffff; --border: #e0d9d0;
+  --text: #2a2520; --muted: #9a8f85; --accent: #7040a0; --accent2: #9060c0;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: 'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif; height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+header { background: var(--panel); border-bottom: 1px solid var(--border); padding: 10px 16px; display: flex; align-items: center; gap: 14px; flex-shrink: 0; z-index: 1000; }
+.logo { font-size: 22px; }
+.title { font-size: 15px; font-weight: 700; letter-spacing: .04em; color: var(--accent); }
+.subtitle { font-size: 11px; color: var(--muted); margin-top: 1px; }
+.hd-right { margin-left: auto; display: flex; gap: 10px; align-items: center; }
+.hd-link { font-size: 12px; color: var(--muted); text-decoration: none; padding: 4px 10px; border: 1px solid var(--border); border-radius: 20px; transition: all .15s; }
+.hd-link:hover { border-color: var(--accent2); color: var(--accent); }
+.stat-badge { background: var(--bg); border: 1px solid var(--border); border-radius: 20px; padding: 3px 12px; font-size: 12px; color: var(--muted); }
+.stat-badge strong { color: var(--accent); font-size: 14px; font-weight: 700; }
+.body { display: flex; flex: 1; overflow: hidden; flex-direction: column; }
+.map-area { display: flex; flex: 1; overflow: hidden; min-height: 0; }
+aside { width: 270px; background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; z-index: 500; }
+aside::-webkit-scrollbar { width: 3px; }
+aside::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.sec { padding: 12px 14px; border-bottom: 1px solid var(--border); }
+.sec-h { font-size: 10px; letter-spacing: .12em; color: var(--muted); margin-bottom: 8px; text-transform: uppercase; }
+.color-row { display: flex; align-items: center; gap: 8px; }
+.color-preview { width: 28px; height: 28px; border-radius: 5px; border: 1.5px solid var(--border); cursor: pointer; flex-shrink: 0; transition: transform .1s; position: relative; overflow: hidden; }
+.color-preview:hover { transform: scale(1.08); }
+input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; border: none; padding: 0; }
+.palette { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.swatch { width: 22px; height: 22px; border-radius: 4px; cursor: pointer; border: 1.5px solid transparent; transition: transform .1s, border-color .1s; }
+.swatch:hover { transform: scale(1.15); }
+.swatch.active { border-color: var(--text); }
+.sel { width: 100%; padding: 5px 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 12px; outline: none; cursor: pointer; }
+.sel:focus { border-color: var(--accent2); }
+.slider-row { display: flex; align-items: center; gap: 8px; }
+.slider-label { font-size: 11px; color: var(--muted); white-space: nowrap; min-width: 60px; }
+.slider-val { font-size: 11px; color: var(--muted); min-width: 32px; text-align: right; }
+.btn { width: 100%; padding: 7px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; font-family: inherit; transition: all .15s; border: 1px solid var(--border); background: transparent; color: var(--muted); margin-top: 4px; }
+.btn:hover { border-color: var(--accent2); color: var(--accent); }
+.btn.primary { background: var(--accent); color: white; border-color: var(--accent); font-weight: 700; }
+.btn.primary:hover { background: var(--accent2); border-color: var(--accent2); }
+.btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+.btn.danger { color: #c03030; }
+.btn.danger:hover { border-color: #c03030; }
+.mlist-wrap { flex: 1; overflow-y: auto; }
+.mlist-wrap::-webkit-scrollbar { width: 3px; }
+.mlist-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.grp-h { font-size: 10px; color: var(--accent); font-weight: 700; padding: 6px 14px 2px; letter-spacing: .1em; border-left: 2px solid var(--accent); }
+.mi { display: flex; align-items: center; gap: 6px; padding: 3px 14px; font-size: 11px; cursor: pointer; transition: background .1s; }
+.mi:hover { background: rgba(0,0,0,.04); }
+.dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; border: 1px solid rgba(0,0,0,.1); }
+.mi-name { flex: 1; color: var(--text); }
+.mi-clear { font-size: 10px; color: var(--muted); cursor: pointer; padding: 1px 4px; border-radius: 3px; }
+.mi-clear:hover { background: rgba(0,0,0,.06); color: var(--accent); }
+.empty { text-align: center; padding: 24px 14px; color: var(--muted); font-size: 11px; line-height: 1.8; }
+#map-wrap { flex: 1; position: relative; overflow: hidden; background: #c8d8e8; }
+#infobar { background: var(--panel); border-top: 1px solid var(--border); padding: 5px 14px; font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 8px; height: 28px; flex-shrink: 0; z-index: 500; white-space: nowrap; overflow: hidden; }
+#infobar .ib-label { color: var(--accent); font-weight: 700; margin-right: 2px; }
+#infobar .ib-name { color: var(--text); }
+#map-svg { width: 100%; height: 100%; cursor: grab; }
+#map-svg:active { cursor: grabbing; }
+.country-path { stroke: none; }
+.border-path { fill: none; pointer-events: none; }
+.tooltip { position: absolute; pointer-events: none; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; font-size: 12px; line-height: 1.6; opacity: 0; transition: opacity .12s; z-index: 460; box-shadow: 0 4px 12px rgba(0,0,0,.1); white-space: nowrap; }
+.zoom-ctrl { position: absolute; right: 12px; bottom: 24px; display: flex; flex-direction: column; gap: 4px; z-index: 450; }
+.zoom-btn { width: 32px; height: 32px; border-radius: 6px; background: var(--panel); border: 1px solid var(--border); color: var(--text); font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .12s; box-shadow: 0 1px 4px rgba(0,0,0,.08); }
+.zoom-btn:hover { border-color: var(--accent2); color: var(--accent); }
+.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(60px); background: var(--text); color: white; padding: 8px 18px; border-radius: 20px; font-size: 12px; transition: transform .3s cubic-bezier(.34,1.56,.64,1); z-index: 9999; pointer-events: none; }
+.toast.show { transform: translateX(-50%) translateY(0); }
+#loading { position: absolute; inset: 0; background: rgba(247,244,239,.92); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 800; gap: 16px; }
+.loading-spinner { width: 48px; height: 48px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; }
+.loading-text { font-size: 14px; color: var(--text); font-weight: 700; letter-spacing: .05em; }
+.loading-sub { font-size: 11px; color: var(--muted); }
+@keyframes spin { to { transform: rotate(360deg); } }
+.hamburger { display: none; flex-direction: column; gap: 5px; cursor: pointer; padding: 4px; background: none; border: none; }
+.hamburger span { display: block; width: 22px; height: 2px; background: var(--text); border-radius: 2px; }
+#drawer-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 490; }
+#drawer-overlay.open { display: block; }
+@media (max-width: 700px) {
+  .hamburger { display: flex; }
+  aside { position: fixed; top: 0; left: -290px; width: 290px; height: 100%; z-index: 500; transition: left .25s cubic-bezier(.4,0,.2,1); box-shadow: 2px 0 16px rgba(0,0,0,.15); }
+  aside.open { left: 0; }
+  .subtitle { display: none; }
+}
+.auto-color-slots { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 6px; align-items: center; }
+.auto-slot { width: 28px; height: 28px; border-radius: 5px; border: 2px solid var(--border); cursor: pointer; flex-shrink: 0; transition: transform .1s, border-color .1s; position: relative; }
+.auto-slot:hover { transform: scale(1.1); }
+.auto-slot.current { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent2); }
+.auto-slot-del { position: absolute; top: -5px; right: -5px; width: 13px; height: 13px; background: #c03030; color: white; border-radius: 50%; font-size: 9px; display: none; align-items: center; justify-content: center; cursor: pointer; line-height: 1; }
+.auto-slot:hover .auto-slot-del { display: flex; }
+.auto-add-btn { width: 28px; height: 28px; border-radius: 5px; border: 1.5px dashed var(--border); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 18px; color: var(--muted); background: none; flex-shrink: 0; transition: all .1s; }
+.auto-add-btn:hover { border-color: var(--accent2); color: var(--accent); }
+.auto-indicator { display: flex; gap: 3px; margin-top: 5px; }
+.auto-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--border); transition: background .2s; }
+.auto-dot.current { background: var(--accent); }
+.cp-popup { display: none; position: fixed; z-index: 9999; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 10px; box-shadow: 0 4px 16px rgba(0,0,0,.15); width: 200px; }
+.cp-popup.open { display: block; }
+.cp-palette { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px; }
+.cp-swatch { width: 22px; height: 22px; border-radius: 4px; cursor: pointer; border: 1.5px solid transparent; transition: transform .1s, border-color .1s; flex-shrink: 0; }
+.cp-swatch:hover { transform: scale(1.15); }
+.cp-swatch.active { border-color: var(--text); }
+.cp-input-row { display: flex; gap: 6px; align-items: center; }
+.cp-input-row input[type=text] { flex: 1; padding: 4px 6px; border: 1px solid var(--border); border-radius: 5px; font-size: 11px; font-family: inherit; color: var(--text); background: var(--bg); outline: none; }
+.cp-preview-small { width: 22px; height: 22px; border-radius: 4px; border: 1.5px solid var(--border); flex-shrink: 0; }
+</style>
+</head>
+<body>
+<header>
+  <button class="hamburger" id="hamburger" onclick="toggleDrawer()"><span></span><span></span><span></span></button>
+  <div class="logo">🌍</div>
+  <div>
+    <div class="title">せかい ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v0.2.2</span></div>
+    <div class="subtitle">せかいの くに・しゅう ぬりわけマップ</div>
+  </div>
+  <div class="hd-right">
+    <div class="stat-badge">ぬった：<strong id="s-painted">0</strong></div>
+    <a href="mukashi.html" class="hd-link">むかしのちず →</a>
+  </div>
+</header>
+<div id="drawer-overlay" onclick="closeDrawer()"></div>
+<div class="body">
+<div class="map-area">
+  <aside id="aside">
+
+    <!-- ちゅうしん -->
+    <div class="sec">
+      <div class="sec-h">ちず ちゅうしん</div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn active" id="btn-c0"   onclick="setCenter(0)"   style="flex:1;font-size:10px;">大西洋<br>0°</button>
+        <button class="btn"        id="btn-c150" onclick="setCenter(150)" style="flex:1;font-size:10px;">太平洋<br>150°</button>
+        <button class="btn"        id="btn-c90"  onclick="setCenter(90)"  style="flex:1;font-size:10px;">インド洋<br>90°</button>
+      </div>
+    </div>
+
+    <!-- ぬりモード -->
+    <div class="sec">
+      <div class="sec-h">ぬり モード</div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn active" id="btn-mode-country" onclick="setPaintMode('country')" style="flex:1;">🌍 くに</button>
+        <button class="btn" id="btn-mode-province" onclick="setPaintMode('province')" style="flex:1;font-size:10px;">🗺️ しゅう<br><span style="font-size:9px;opacity:0.7;">じゅんびちゅう</span></button>
+      </div>
+    </div>
+
+    <!-- じどう いろかえ -->
+    <div class="sec">
+      <div class="sec-h">じどう いろかえ</div>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--muted);">
+        <input type="checkbox" id="auto-color-toggle" onchange="toggleAutoColor(this.checked)" style="accent-color:var(--accent);width:14px;height:14px;">
+        ぬるたびに いろ じどう きりかえ
+      </label>
+      <div id="auto-color-detail" style="margin-top:8px;opacity:0.4;pointer-events:none;">
+        <div style="font-size:10px;color:var(--muted);margin-bottom:4px;">ローテション する いろ（2〜5こ）</div>
+        <div class="auto-color-slots" id="auto-color-slots"></div>
+        <div class="auto-indicator" id="auto-indicator"></div>
+      </div>
+    </div>
+
+    <!-- いろ -->
+    <div class="sec">
+      <div class="sec-h">ぬる いろ</div>
+      <div class="color-row">
+        <div class="color-preview" id="colorPreview" style="background:#e05030"><input type="color" id="colorPicker" value="#e05030" oninput="setCurrentColor(this.value)"></div>
+        <span style="font-size:12px;color:var(--muted);" id="colorHex">#e05030</span>
+        <button id="btn-eyedropper" onclick="toggleEyedropper()" style="margin-left:auto;margin-top:0;width:auto;padding:4px 8px;font-size:13px;" class="btn" title="スポイト">💉</button>
+      </div>
+      <div class="palette" id="palette"></div>
+    </div>
+
+    <!-- さかいせん -->
+    <div class="sec">
+      <div class="sec-h">さかいせん</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--muted);">
+          <input type="checkbox" id="border-toggle" checked onchange="toggleBorder(this.checked)" style="accent-color:var(--accent);width:14px;height:14px;">
+          ひょうじ する
+        </label>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:7px;" id="border-detail">
+        <div class="color-row">
+          <div class="color-preview" id="borderPreview" style="background:#888888;cursor:pointer;" onclick="openColorPopup('borderPreview', borderColor, c=>setBorderColor(c))"></div>
+          <span style="font-size:12px;color:var(--muted);">いろ</span>
+        </div>
+        <div class="slider-row">
+          <span class="slider-label">ふとさ</span>
+          <input type="range" id="border-width" min="0" max="4" step="0.25" value="0.5" style="flex:1;accent-color:var(--accent);" oninput="setBorderWidth(this.value)">
+          <span class="slider-val" id="border-width-val">0.5</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- はいけい -->
+    <div class="sec">
+      <div class="sec-h">はいけい いろ</div>
+      <div style="display:flex;flex-direction:column;gap:7px;">
+        <div class="color-row">
+          <div class="color-preview" id="landColorPreview" style="background:#dcd2c8;cursor:pointer;" onclick="openColorPopup('landColorPreview', landColor, c=>setLandColor(c))"></div>
+          <span style="font-size:12px;color:var(--muted);">りく いろ</span>
+        </div>
+        <div class="color-row">
+          <div class="color-preview" id="seaColorPreview" style="background:#c8d8e8;cursor:pointer;" onclick="openColorPopup('seaColorPreview', seaColor, c=>setSeaColor(c))"></div>
+          <span style="font-size:12px;color:var(--muted);">うみ いろ</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- データ -->
+    <div class="sec">
+      <div class="sec-h">データ</div>
+      <button class="btn primary" onclick="saveData()">💾 セーブ（JSON）</button>
+      <button class="btn" onclick="document.getElementById('loadIn').click()">📂 ロード（JSON）</button>
+      <input type="file" id="loadIn" accept=".json" style="display:none" onchange="loadData(event)">
+      <button class="btn danger" onclick="clearAll()">🗑 ぜんぶ クリア</button>
+    </div>
+
+    <!-- ほぞん -->
+    <div class="sec">
+      <div class="sec-h">ほぞん</div>
+      <button class="btn primary" onclick="capturePNG()">📷 PNG で ほぞん</button>
+    </div>
+
+    <!-- リスト -->
+    <div class="mlist-wrap">
+      <div class="empty" id="mlist-empty">クリックして<br>くにを<br>ぬってみよう！</div>
+      <div id="mlist"></div>
+    </div>
+  </aside>
+
+  <div id="map-wrap">
+    <div id="loading">
+      <div class="loading-spinner"></div>
+      <div class="loading-text">よみこみちゅう…</div>
+      <div class="loading-sub">せかいの くにデータを よみこんでいるヨ、すこし まてネ</div>
+    </div>
+    <svg id="map-svg">
+      <rect id="sea-rect" width="100%" height="100%" fill="#c8d8e8"/>
+      <g id="g-countries"></g>
+      <g id="g-borders"></g>
+    </svg>
+    <div id="tooltip" class="tooltip"></div>
+    <div class="zoom-ctrl">
+      <button class="zoom-btn" onclick="zoomBy(1.3)">＋</button>
+      <button class="zoom-btn" onclick="resetView()">⌂</button>
+      <button class="zoom-btn" onclick="zoomBy(1/1.3)">－</button>
+    </div>
+  </div>
+</div>
+<div id="infobar"><span class="ib-label">📍</span><span class="ib-name" id="ib-name">──</span></div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// =====================================================
+// パレット
+// =====================================================
+const PRESET_COLORS = [
+  '#e05030','#e08030','#d4b020','#60a840','#20a070',
+  '#2080c0','#6050c0','#c040a0','#c08060','#406040',
+  '#f4a090','#f4c090','#f4e090','#a0d890','#80d0b8',
+  '#80b8e8','#b0a0e0','#e0a0d0','#a0d0f0','#f0a0b8',
+  '#ff0000','#ff8000','#ffff00','#00cc00','#00cccc',
+  '#0000ff','#8800ff','#ff00ff','#ff6699','#00ffaa',
+  '#eeeeee','#bbbbbb','#888888','#555555','#222222',
+  '#ffffff','#1a1a1a',
+];
+let currentColor = '#e05030';
+let autoColorEnabled = false;
+let autoColorSlots = ['#e05030','#2080c0','#60a840','#d4b020'];
+let autoColorIndex = 0;
+
+function toggleAutoColor(on) {
+  autoColorEnabled = on;
+  const d = document.getElementById('auto-color-detail');
+  d.style.opacity = on?'1':'0.4'; d.style.pointerEvents = on?'auto':'none';
+  if (on) { autoColorIndex=0; setCurrentColor(autoColorSlots[0]); }
+  renderAutoSlots();
+}
+function renderAutoSlots() {
+  const wrap = document.getElementById('auto-color-slots');
+  const ind  = document.getElementById('auto-indicator');
+  wrap.innerHTML=''; ind.innerHTML='';
+  autoColorSlots.forEach((c,i) => {
+    const slot = document.createElement('div');
+    slot.className='auto-slot'+(i===autoColorIndex?' current':'');
+    slot.style.background=c;
+    slot.onclick=e=>{e.stopPropagation();openColorPopupFromEl(slot,c,nc=>{autoColorSlots[i]=nc;if(autoColorEnabled&&i===autoColorIndex)setCurrentColor(nc);renderAutoSlots();});};
+    if(autoColorSlots.length>2){const del=document.createElement('div');del.className='auto-slot-del';del.textContent='×';del.onclick=e=>{e.stopPropagation();autoColorSlots.splice(i,1);if(autoColorIndex>=autoColorSlots.length)autoColorIndex=0;if(autoColorEnabled)setCurrentColor(autoColorSlots[autoColorIndex]);renderAutoSlots();};slot.appendChild(del);}
+    wrap.appendChild(slot);
+    const dot=document.createElement('div');dot.className='auto-dot'+(i===autoColorIndex?' current':'');ind.appendChild(dot);
+  });
+  const ed=document.createElement('div');ed.className='auto-dot'+(autoColorIndex>=autoColorSlots.length?' current':'');
+  ed.style.cssText='font-size:8px;width:auto;height:auto;background:none;display:flex;align-items:center;';ed.textContent='🗑';ind.appendChild(ed);
+  if(autoColorSlots.length<5){const a=document.createElement('button');a.className='auto-add-btn';a.textContent='+';a.onclick=()=>{autoColorSlots.push(shiftHue(autoColorSlots[autoColorSlots.length-1],60));renderAutoSlots();};wrap.appendChild(a);}
+}
+function advanceAutoColor() {
+  if(!autoColorEnabled)return;
+  autoColorIndex=(autoColorIndex+1)%(autoColorSlots.length+1);
+  if(autoColorIndex<autoColorSlots.length)setCurrentColor(autoColorSlots[autoColorIndex]);
+  renderAutoSlots();
+}
+function shiftHue(hex,deg){
+  let r=parseInt(hex.slice(1,3),16)/255,g=parseInt(hex.slice(3,5),16)/255,b=parseInt(hex.slice(5,7),16)/255;
+  const max=Math.max(r,g,b),min=Math.min(r,g,b),d=max-min;
+  let h=0,s=max===0?0:d/max,v=max;
+  if(d>0){if(max===r)h=((g-b)/d+6)%6;else if(max===g)h=(b-r)/d+2;else h=(r-g)/d+4;h*=60;}
+  h=(h+deg)%360;const c2=v*s,x=c2*(1-Math.abs((h/60)%2-1)),m=v-c2;
+  let rr,gg,bb;if(h<60){rr=c2;gg=x;bb=0;}else if(h<120){rr=x;gg=c2;bb=0;}else if(h<180){rr=0;gg=c2;bb=x;}else if(h<240){rr=0;gg=x;bb=c2;}else if(h<300){rr=x;gg=0;bb=c2;}else{rr=c2;gg=0;bb=x;}
+  const toHex=n=>Math.round((n+m)*255).toString(16).padStart(2,'0');
+  return '#'+toHex(rr)+toHex(gg)+toHex(bb);
+}
+function initPalette(){
+  const pal=document.getElementById('palette');
+  PRESET_COLORS.forEach(c=>{const sw=document.createElement('div');sw.className='swatch'+(c===currentColor?' active':'');sw.style.background=c;sw.title=c;sw.onclick=()=>setCurrentColor(c);pal.appendChild(sw);});
+  renderAutoSlots();
+}
+function setCurrentColor(c){
+  currentColor=c;
+  document.getElementById('colorPreview').style.background=c;
+  document.getElementById('colorHex').textContent=c;
+  document.getElementById('colorPicker').value=c;
+  document.querySelectorAll('.swatch').forEach(sw=>sw.classList.toggle('active',sw.title===c));
+}
+
+// =====================================================
+// カラポップアップ
+// =====================================================
+let cpCallback=null;
+function openColorPopup(anchorId,currentVal,callback){
+  const ex=document.getElementById('cp-popup-global');if(ex)ex.remove();
+  cpCallback=callback;const anchor=document.getElementById(anchorId);
+  const popup=buildCpPopup(currentVal);document.body.appendChild(popup);
+  const r=anchor.getBoundingClientRect();popup.style.top=(r.bottom+4)+'px';popup.style.left=r.left+'px';
+  setTimeout(()=>{document.addEventListener('click',function h(e){if(!popup.contains(e.target)&&e.target!==anchor){popup.remove();document.removeEventListener('click',h);}});},0);
+}
+function openColorPopupFromEl(el,currentVal,callback){
+  const ex=document.getElementById('cp-popup-global');if(ex)ex.remove();
+  cpCallback=callback;const popup=buildCpPopup(currentVal);document.body.appendChild(popup);
+  const r=el.getBoundingClientRect();popup.style.top=(r.bottom+4)+'px';popup.style.left=r.left+'px';
+  setTimeout(()=>{document.addEventListener('click',function h(e){if(!popup.contains(e.target)&&e.target!==el){popup.remove();document.removeEventListener('click',h);}});},0);
+}
+function buildCpPopup(currentVal){
+  const popup=document.createElement('div');popup.id='cp-popup-global';popup.className='cp-popup open';popup.style.position='fixed';popup.style.zIndex='9999';
+  const pal=document.createElement('div');pal.className='cp-palette';
+  PRESET_COLORS.forEach(c=>{const sw=document.createElement('div');sw.className='cp-swatch'+(c===currentVal?' active':'');sw.style.background=c;sw.onclick=()=>{cpCallback(c);popup.remove();};pal.appendChild(sw);});
+  popup.appendChild(pal);
+  const row=document.createElement('div');row.className='cp-input-row';
+  const prev=document.createElement('div');prev.className='cp-preview-small';prev.style.background=currentVal;
+  const inp=document.createElement('input');inp.type='text';inp.value=currentVal;inp.placeholder='#rrggbb';
+  inp.oninput=()=>{const v=inp.value.trim();if(/^#[0-9a-fA-F]{6}$/.test(v)){prev.style.background=v;cpCallback(v);}};
+  inp.onkeydown=e=>{if(e.key==='Enter')popup.remove();};
+  row.appendChild(prev);row.appendChild(inp);popup.appendChild(row);
+  return popup;
+}
+
+// =====================================================
+// スポイト
+// =====================================================
+let eyedropperMode=false;
+function toggleEyedropper(){
+  eyedropperMode=!eyedropperMode;
+  document.getElementById('btn-eyedropper').classList.toggle('active',eyedropperMode);
+  document.getElementById('map-svg').style.cursor=eyedropperMode?'crosshair':'grab';
+}
+
+// =====================================================
+// ぬりモード
+// =====================================================
+let paintMode='country';
+function setPaintMode(mode){
+  if(mode==='province'){toast('しゅうモードは じゅんびちゅうデスヨ！');return;}
+  paintMode=mode;
+  document.getElementById('btn-mode-country').classList.toggle('active',mode==='country');
+  document.getElementById('btn-mode-province').classList.toggle('active',mode==='province');
+}
+
+// =====================================================
+// D3 せっていと マップ
+// =====================================================
+let paintMap = new Map();
+let countryFeatures = [];
+let countryTopo = null;
+let landColor = '#dcd2c8', seaColor = '#c8d8e8';
+let borderColor = '#888888', borderWidth = 0.5, borderOn = true;
+let currentCenterLng = 0;
+
+// D3 projection（geoNaturalEarth1 or geoMercator）
+let projection, pathGen, svgSel, gCountries, gBorders;
+let currentTransform = d3.zoomIdentity;
+
+function getCountryId(f){
+  const p=f.properties||{};
+  return String(p.ISO_A3||p.iso_a3||p.ADM0_A3||f.id||'');
+}
+function getCountryName(f){
+  const p=f.properties||{};
+  return p.NAME||p.name||p.ADMIN||p.admin||'';
+}
+
+function initD3Map(){
+  const wrap = document.getElementById('map-wrap');
+  svgSel = d3.select('#map-svg');
+  gCountries = d3.select('#g-countries');
+  gBorders   = d3.select('#g-borders');
+
+  // D3 zoom
+  const zoom = d3.zoom()
+    .scaleExtent([0.5, 20])
+    .on('zoom', (event) => {
+      currentTransform = event.transform;
+      gCountries.attr('transform', currentTransform);
+      gBorders.attr('transform', currentTransform);
+    });
+  svgSel.call(zoom);
+
+  // ダブルクリックズームを無効化
+  svgSel.on('dblclick.zoom', null);
+
+  buildProjection();
+}
+
+function buildProjection(){
+  const wrap = document.getElementById('map-wrap');
+  const W = wrap.clientWidth, H = wrap.clientHeight;
+
+  projection = d3.geoMercator()
+    .center([currentCenterLng, 20])
+    .scale(W / (2 * Math.PI) * 0.9)
+    .translate([W / 2, H / 2]);
+
+  pathGen = d3.geoPath().projection(projection);
+}
+
+function resetView(){
+  const wrap = document.getElementById('map-wrap');
+  const W = wrap.clientWidth, H = wrap.clientHeight;
+  buildProjection();
+  currentTransform = d3.zoomIdentity;
+  svgSel.transition().duration(400).call(
+    d3.zoom().transform, d3.zoomIdentity
+  );
+  gCountries.attr('transform', d3.zoomIdentity);
+  gBorders.attr('transform', d3.zoomIdentity);
+  redrawAll();
+}
+
+function zoomBy(factor){
+  const wrap = document.getElementById('map-wrap');
+  const W = wrap.clientWidth, H = wrap.clientHeight;
+  svgSel.transition().duration(250).call(
+    d3.zoom().scaleBy, factor
+  );
+}
+
+function setCenter(lng){
+  currentCenterLng = lng;
+  document.getElementById('btn-c0').classList.toggle('active', lng===0);
+  document.getElementById('btn-c150').classList.toggle('active', lng===150);
+  document.getElementById('btn-c90').classList.toggle('active', lng===90);
+  resetView();
+}
+
+function redrawAll(){
+  if(!countryFeatures.length) return;
+  // ポリゴン
+  const paths = gCountries.selectAll('.country-path')
+    .data(countryFeatures, d => getCountryId(d));
+
+  paths.enter().append('path')
+    .attr('class','country-path')
+    .style('cursor','pointer')
+    .on('mouseover', function(ev,d){
+      const name=getCountryName(d), id=getCountryId(d), color=paintMap.get(id);
+      showTip(ev,`${name}${color?' ('+color+')':''}`);
+      updateInfobar(name);
+    })
+    .on('mousemove', ev=>moveTip(ev))
+    .on('mouseout', ()=>{hideTip();updateInfobar('──');})
+    .on('click', function(ev,d){
+      ev.stopPropagation();
+      const id=getCountryId(d); if(!id)return;
+      if(eyedropperMode){
+        const col=paintMap.get(id);
+        if(col){setCurrentColor(col);toast('いろ すいとたヨ！ '+col);}
+        eyedropperMode=false;document.getElementById('btn-eyedropper').classList.remove('active');document.getElementById('map-svg').style.cursor='grab';
+        return;
+      }
+      const isEraseStep=autoColorEnabled&&autoColorIndex>=autoColorSlots.length;
+      if(isEraseStep){paintMap.delete(id);d3.select(this).attr('fill',landColor);updateSidebar();updateStats();advanceAutoColor();return;}
+      const alreadySame=paintMap.get(id)===currentColor;
+      if(alreadySame){paintMap.delete(id);d3.select(this).attr('fill',landColor);}
+      else{paintMap.set(id,currentColor);d3.select(this).attr('fill',currentColor);}
+      updateSidebar();updateStats();
+      if(!alreadySame)advanceAutoColor();
+    })
+    .merge(paths)
+    .attr('d', d=>pathGen(d)||'')
+    .attr('fill', d=>paintMap.get(getCountryId(d))||landColor);
+
+  paths.exit().remove();
+  redrawBorders();
+}
+
+function redrawBorders(){
+  gBorders.selectAll('*').remove();
+  if(!borderOn||borderWidth<=0||!countryTopo||!pathGen)return;
+  try{
+    const mesh=topojson.mesh(countryTopo,countryTopo.objects.countries,(a,b)=>a!==b);
+    gBorders.append('path')
+      .attr('class','border-path')
+      .attr('d',pathGen(mesh)||'')
+      .attr('stroke',borderColor)
+      .attr('stroke-width',borderWidth);
+  }catch(e){}
+}
+
+// =====================================================
+// はいけい・さかいせん
+// =====================================================
+function setBorderColor(c){borderColor=c;document.getElementById('borderPreview').style.background=c;redrawBorders();}
+function setBorderWidth(v){borderWidth=parseFloat(v);document.getElementById('border-width-val').textContent=v;redrawBorders();}
+function toggleBorder(on){borderOn=on;document.getElementById('border-detail').style.opacity=on?'1':'0.4';redrawBorders();}
+function setLandColor(c){
+  landColor=c;document.getElementById('landColorPreview').style.background=c;
+  gCountries.selectAll('.country-path').each(function(d){if(!paintMap.has(getCountryId(d)))d3.select(this).attr('fill',landColor);});
+}
+function setSeaColor(c){seaColor=c;document.getElementById('seaColorPreview').style.background=c;document.getElementById('sea-rect').setAttribute('fill',c);document.getElementById('map-wrap').style.background=c;}
+
+// =====================================================
+// データよみこみ
+// =====================================================
+async function loadCountryData(){
+  const res=await fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-10m.json');
+  if(!res.ok)throw new Error('データ よみこみ しっぱい');
+  const topo=await res.json();
+  countryTopo=topo;
+  const fc=topojson.feature(topo,topo.objects.countries);
+  countryFeatures=fc.features;
+  countryFeatures.forEach(f=>{
+    const id=String(f.id||'');
+    f.properties=f.properties||{};
+    f.properties.ISO_A3=id;
+    f.properties.NAME=COUNTRY_NAMES[id]||id;
+  });
+}
+
+const COUNTRY_NAMES={
+  "004":"アフガニスタン","008":"アルバニア","012":"アルジェリア","016":"アメリカ領サモア",
+  "020":"アンドラ","024":"アンゴラ","028":"アンティグア・バーブーダ","032":"アルゼンチン",
+  "031":"アゼルバイジャン","036":"オーストラリア","040":"オーストリア","044":"バハマ",
+  "048":"バーレーン","050":"バングラデシュ","052":"バルバドス","056":"ベルギー",
+  "060":"バミューダ","064":"ブータン","068":"ボリビア","070":"ボスニア・ヘルツェゴビナ",
+  "072":"ボツワナ","076":"ブラジル","084":"ベリーズ","086":"英領インド洋地域",
+  "090":"ソロモン諸島","096":"ブルネイ","100":"ブルガリア","104":"ミャンマー",
+  "108":"ブルンジ","112":"ベラルーシ","116":"カンボジア","120":"カメルーン",
+  "124":"カナダ","132":"カーボベルデ","136":"ケイマン諸島","140":"中央アフリカ共和国",
+  "144":"スリランカ","148":"チャド","152":"チリ","156":"中国",
+  "158":"台湾","162":"クリスマス島","166":"ココス諸島","170":"コロンビア",
+  "174":"コモロ","175":"マヨット","178":"コンゴ共和国","180":"コンゴ民主共和国",
+  "184":"クック諸島","188":"コスタリカ","191":"クロアチア","192":"キューバ",
+  "196":"キプロス","203":"チェコ","204":"ベナン","208":"デンマーク",
+  "212":"ドミニカ","214":"ドミニカ共和国","218":"エクアドル","231":"エチオピア",
+  "232":"エリトリア","233":"エストニア","238":"フォークランド諸島","242":"フィジー",
+  "246":"フィンランド","248":"オーランド諸島","250":"フランス","266":"ガボン",
+  "268":"ジョージア","270":"ガンビア","275":"パレスチナ","276":"ドイツ",
+  "288":"ガーナ","292":"ジブラルタル","300":"ギリシャ","304":"グリーンランド",
+  "308":"グレナダ","312":"グアドループ","316":"グアム","320":"グアテマラ",
+  "324":"ギニア","328":"ガイアナ","332":"ハイチ","336":"バチカン",
+  "340":"ホンジュラス","344":"香港","348":"ハンガリー","352":"アイスランド",
+  "356":"インド","360":"インドネシア","364":"イラン","368":"イラク",
+  "372":"アイルランド","376":"イスラエル","380":"イタリア","388":"ジャマイカ",
+  "392":"日本","398":"カザフスタン","400":"ヨルダン","404":"ケニア",
+  "408":"北朝鮮","410":"韓国","414":"クウェート","417":"キルギスタン",
+  "418":"ラオス","422":"レバノン","426":"レソト","428":"ラトビア",
+  "430":"リベリア","434":"リビア","438":"リヒテンシュタイン","440":"リトアニア",
+  "442":"ルクセンブルク","446":"マカオ","450":"マダガスカル","454":"マラウイ",
+  "458":"マレーシア","462":"モルディブ","466":"マリ","470":"マルタ",
+  "474":"マルティニーク","478":"モーリタニア","480":"モーリシャス","484":"メキシコ",
+  "492":"モナコ","496":"モンゴル","498":"モルドバ","499":"モンテネグロ",
+  "504":"モロッコ","508":"モザンビーク","516":"ナミビア","520":"ナウル",
+  "524":"ネパール","528":"オランダ","540":"ニューカレドニア","548":"バヌアツ",
+  "554":"ニュージーランド","558":"ニカラグア","562":"ニジェール","566":"ナイジェリア",
+  "570":"ニウエ","578":"ノルウェー","583":"ミクロネシア","584":"マーシャル諸島",
+  "585":"パラオ","586":"パキスタン","591":"パナマ","598":"パプアニューギニア",
+  "600":"パラグアイ","604":"ペルー","608":"フィリピン","616":"ポーランド",
+  "620":"ポルトガル","626":"東ティモール","630":"プエルトリコ","634":"カタール",
+  "638":"レユニオン","642":"ルーマニア","643":"ロシア","646":"ルワンダ",
+  "654":"セントヘレナ","659":"セントクリストファー・ネービス","662":"セントルシア",
+  "666":"サンピエール・ミクロン","670":"セントビンセント・グレナディーン",
+  "674":"サンマリノ","678":"サントメ・プリンシペ","682":"サウジアラビア",
+  "686":"セネガル","688":"セルビア","690":"セーシェル","694":"シエラレオネ",
+  "702":"シンガポール","703":"スロバキア","705":"スロベニア","706":"ソマリア",
+  "710":"南アフリカ","716":"ジンバブエ","724":"スペイン","728":"南スーダン",
+  "729":"スーダン","736":"スーダン","740":"スリナム","744":"スバールバル諸島",
+  "752":"スウェーデン","756":"スイス","760":"シリア","762":"タジキスタン",
+  "764":"タイ","768":"トーゴ","772":"トケラウ","776":"トンガ",
+  "780":"トリニダード・トバゴ","784":"アラブ首長国連邦","788":"チュニジア",
+  "792":"トルコ","795":"トルクメニスタン","796":"タークス・カイコス諸島",
+  "798":"ツバル","800":"ウガンダ","804":"ウクライナ","807":"北マケドニア",
+  "818":"エジプト","826":"イギリス","831":"ガーンジー","832":"ジャージー",
+  "840":"アメリカ","850":"アメリカ領バージン諸島","854":"ブルキナファソ",
+  "858":"ウルグアイ","860":"ウズベキスタン","862":"ベネズエラ","876":"ウォリス・フツナ",
+  "882":"サモア","887":"イエメン","894":"ザンビア","092":"英領バージン諸島",
+  "533":"アルバ","534":"シント・マールテン"
+};
+
+// =====================================================
+// サイドバー
+// =====================================================
+function updateSidebar(){
+  const list=document.getElementById('mlist'),empty=document.getElementById('mlist-empty');
+  if(!paintMap.size){empty.style.display='';list.innerHTML='';return;}
+  empty.style.display='none';list.innerHTML='';
+  const cg={};
+  countryFeatures.forEach(f=>{const id=getCountryId(f),color=paintMap.get(id);if(!color)return;if(!cg[color])cg[color]=[];cg[color].push({name:getCountryName(f),id,color});});
+  Object.entries(cg).forEach(([color,items])=>{
+    const grp=document.createElement('div');grp.innerHTML=`<div class="grp-h" style="border-color:${color};color:${color};">■ ${color}</div>`;
+    items.sort((a,b)=>a.name.localeCompare(b.name)).forEach(({name,id,color:c})=>{
+      const mi=document.createElement('div');mi.className='mi';
+      mi.innerHTML=`<div class="dot" style="background:${c}"></div><span class="mi-name">${name}</span><span class="mi-clear" data-id="${id}">✕</span>`;
+      mi.querySelector('.mi-clear').onclick=e=>{e.stopPropagation();paintMap.delete(id);gCountries.selectAll('.country-path').filter(d=>getCountryId(d)===id).attr('fill',landColor);updateSidebar();updateStats();};
+      grp.appendChild(mi);
+    });
+    list.appendChild(grp);
+  });
+}
+function updateStats(){document.getElementById('s-painted').textContent=paintMap.size;}
+
+// =====================================================
+// ツールチップ
+// =====================================================
+let tipTimer=null;
+function showTip(ev,text){
+  clearTimeout(tipTimer);const tip=document.getElementById('tooltip');tip.textContent=text;moveTip(ev);
+  tipTimer=setTimeout(()=>{tip.style.opacity='1';},600);
+}
+function moveTip(ev){
+  const tip=document.getElementById('tooltip'),wrap=document.getElementById('map-wrap');
+  const r=wrap.getBoundingClientRect();
+  let x=ev.clientX-r.left+14,y=ev.clientY-r.top-10;
+  if(x+220>wrap.clientWidth)x=ev.clientX-r.left-220;
+  tip.style.left=x+'px';tip.style.top=y+'px';
+}
+function hideTip(){clearTimeout(tipTimer);document.getElementById('tooltip').style.opacity='0';}
+function updateInfobar(text){document.getElementById('ib-name').textContent=text||'──';}
+
+// =====================================================
+// セーブ/ロード
+// =====================================================
+function saveData(){
+  const obj={version:1,paintMap:Object.fromEntries(paintMap)};
+  const blob=new Blob([JSON.stringify(obj,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  const now=new Date();
+  const ts=now.getFullYear()+String(now.getMonth()+1).padStart(2,'0')+String(now.getDate()).padStart(2,'0')+String(now.getHours()).padStart(2,'0')+String(now.getMinutes()).padStart(2,'0')+String(now.getSeconds()).padStart(2,'0');
+  a.download=`world-nuri_${ts}.json`;a.click();toast('セーブしたヨ！');
+}
+function loadData(ev){
+  const file=ev.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const obj=JSON.parse(e.target.result);
+      if(obj.paintMap){paintMap.clear();Object.entries(obj.paintMap).forEach(([k,v])=>paintMap.set(k,v));}
+      gCountries.selectAll('.country-path').attr('fill',d=>paintMap.get(getCountryId(d))||landColor);
+      updateSidebar();updateStats();toast('ロードしたヨ！');
+    }catch(err){toast('よみこみ エラー…');}
+    ev.target.value='';
+  };
+  reader.readAsText(file);
+}
+function clearAll(){
+  if(!confirm('ぜんぶ クリア しますか？'))return;
+  paintMap.clear();
+  gCountries.selectAll('.country-path').attr('fill',landColor);
+  autoColorEnabled=false;autoColorIndex=0;autoColorSlots=['#e05030','#2080c0','#60a840','#d4b020'];
+  document.getElementById('auto-color-toggle').checked=false;
+  const d=document.getElementById('auto-color-detail');d.style.opacity='0.4';d.style.pointerEvents='none';
+  renderAutoSlots();setCurrentColor('#e05030');updateSidebar();updateStats();toast('クリアしたヨ！');
+}
+async function capturePNG(){
+  toast('PNG キャプチャ ちゅう…');
+  try{
+    const canvas=await html2canvas(document.getElementById('map-wrap'),{useCORS:true,scale:2});
+    const a=document.createElement('a');a.download='world-nuri.png';a.href=canvas.toDataURL('image/png');a.click();
+    toast('PNG ほぞん できたヨ！');
+  }catch(e){toast('PNG キャプチャ しっぱい…');}
+}
+
+// =====================================================
+// トースト・ドロワー
+// =====================================================
+let toastTimer;
+function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),2400);}
+function toggleDrawer(){document.getElementById('aside').classList.toggle('open');document.getElementById('drawer-overlay').classList.toggle('open',document.getElementById('aside').classList.contains('open'));}
+function closeDrawer(){document.getElementById('aside').classList.remove('open');document.getElementById('drawer-overlay').classList.remove('open');}
+window.addEventListener('resize',()=>{buildProjection();redrawAll();});
+
+// =====================================================
+// きどう
+// =====================================================
+async function init(){
+  initPalette();
+  initD3Map();
+  try{
+    await loadCountryData();
+    redrawAll();
+    document.getElementById('loading').style.display='none';
+    toast('クリックして くにを ぬてみてネ！');
+  }catch(e){
+    console.error(e);
+    document.getElementById('loading').innerHTML='<div style="color:#c03030;">データ よみこみ しっぱい…<br>ぎっとはぶぺじ から ひらいてネ</div>';
+  }
+}
+init();
+</script>
+</body>
+</html>
