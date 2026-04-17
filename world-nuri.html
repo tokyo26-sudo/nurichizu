@@ -126,7 +126,7 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
   <button class="hamburger" id="hamburger" onclick="toggleDrawer()"><span></span><span></span><span></span></button>
   <div class="logo">🌍</div>
   <div>
-    <div class="title">せかい ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v1.2.11</span></div>
+    <div class="title">せかい ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v1.2.12</span></div>
     <div class="subtitle">せかいの くに・しゅう ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -704,7 +704,25 @@ async function loadProvinceData(iso2) {
     return g === 'admin1';
   });
 
-  // isValidRing: WGS84 はんい そと や 異常に おおきい リング を のぞく
+  // SVGパス から 座標が 異常に おおきい サブパスを のぞく
+function filterSvgPath(pathStr) {
+  if (!pathStr) return '';
+  // Z で サブパスに ぶんかつ
+  const subpaths = pathStr.split(/(?=M)/);
+  const filtered = subpaths.filter(sp => {
+    if (!sp.trim()) return false;
+    // サブパスの 座標を チェック
+    const nums = sp.match(/-?[\d.]+/g);
+    if (!nums) return false;
+    for (let i = 0; i < nums.length; i++) {
+      if (Math.abs(parseFloat(nums[i])) > 2000) return false;
+    }
+    return true;
+  });
+  return filtered.join('') || '';
+}
+
+// isValidRing: WGS84 はんい そと や 異常に おおきい リング を のぞく
   // CRSあり・なし どちらの くに でも、へんかん ご に かならず てきよう する
   function isValidRing(ring) {
     if (!ring || ring.length < 3) return false;
@@ -888,9 +906,12 @@ function drawProvinceLayer() {
       const offset = get360Offset();
       const d1 = d3Path(f);
       if (!d1) return;
+      // SVGパス から 巨大座標サブパスを のぞく
+      const d1clean = filterSvgPath(d1);
+      if (!d1clean) return;
       gProvince.append('path')
         .datum(f)
-        .attr('d', d1)
+        .attr('d', d1clean)
         .attr('fill', provincePaintMap.get(uid) || landColor)
         .attr('stroke', provBorderColor)
         .attr('stroke-width', provBorderWidth)
@@ -1080,10 +1101,7 @@ function updateProjection() {
   d3Projection = d3.geoMercator()
     .scale(scale)
     .translate([origin.x, origin.y]);
-  // clipExtent で SVG えがき はんい を せいげん → 巨大座標 ふせぐ
-  const margin = 500;
-  d3Path = d3.geoPath().projection(d3Projection)
-    .clipExtent([[-margin, -margin], [window.innerWidth + margin, window.innerHeight + margin]]);
+  d3Path = d3.geoPath().projection(d3Projection);
 }
 
 // 1ピクセルあたりの経度差を計算（+360度ずらしたときのXオフセット）
