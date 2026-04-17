@@ -126,7 +126,7 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
   <button class="hamburger" id="hamburger" onclick="toggleDrawer()"><span></span><span></span><span></span></button>
   <div class="logo">🌍</div>
   <div>
-    <div class="title">せかい ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v1.2.12</span></div>
+    <div class="title">せかい ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v1.2.13</span></div>
     <div class="subtitle">せかいの くに・しゅう ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -704,24 +704,6 @@ async function loadProvinceData(iso2) {
     return g === 'admin1';
   });
 
-  // SVGパス から 座標が 異常に おおきい サブパスを のぞく
-function filterSvgPath(pathStr) {
-  if (!pathStr) return '';
-  // Z で サブパスに ぶんかつ
-  const subpaths = pathStr.split(/(?=M)/);
-  const filtered = subpaths.filter(sp => {
-    if (!sp.trim()) return false;
-    // サブパスの 座標を チェック
-    const nums = sp.match(/-?[\d.]+/g);
-    if (!nums) return false;
-    for (let i = 0; i < nums.length; i++) {
-      if (Math.abs(parseFloat(nums[i])) > 2000) return false;
-    }
-    return true;
-  });
-  return filtered.join('') || '';
-}
-
 // isValidRing: WGS84 はんい そと や 異常に おおきい リング を のぞく
   // CRSあり・なし どちらの くに でも、へんかん ご に かならず てきよう する
   function isValidRing(ring) {
@@ -803,6 +785,22 @@ function convertHCGeometry(geom, tf) {
   } else if (geom.type === 'LineString') {
     geom.coordinates = geom.coordinates.map(c => toLatLng(c[0], c[1]));
   }
+}
+
+// SVGパス から 座標が 異常に おおきい サブパスを のぞく
+function filterSvgPath(pathStr) {
+  if (!pathStr) return '';
+  const subpaths = pathStr.split(/(?=M)/);
+  const filtered = subpaths.filter(sp => {
+    if (!sp.trim()) return false;
+    const nums = sp.match(/-?[\d.]+/g);
+    if (!nums) return false;
+    for (let i = 0; i < nums.length; i++) {
+      if (Math.abs(parseFloat(nums[i])) > 2000) return false;
+    }
+    return true;
+  });
+  return filtered.join('') || '';
 }
 
 // Highcharts hitZone（2D ポリゴン）に feature の centroid が含まれるか判定
