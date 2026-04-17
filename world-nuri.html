@@ -126,7 +126,7 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
   <button class="hamburger" id="hamburger" onclick="toggleDrawer()"><span></span><span></span><span></span></button>
   <div class="logo">🌍</div>
   <div>
-    <div class="title">せかい ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v1.2.2</span></div>
+    <div class="title">せかい ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v1.2.3</span></div>
     <div class="subtitle">せかいの くに・しゅう ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -189,6 +189,30 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
         </div>
         <div class="pref-tags" id="province-tags"></div>
         <div style="font-size:10px;color:var(--muted);margin-top:5px;">※ ふくすう の くに どうじ ひょうじ OK</div>
+        <!-- しゅう さかいせん -->
+        <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:8px;">
+          <div style="font-size:10px;letter-spacing:.1em;color:var(--muted);margin-bottom:6px;text-transform:uppercase;">しゅう さかいせん</div>
+          <div style="display:flex;flex-direction:column;gap:7px;">
+            <div class="color-row">
+              <div class="color-preview" id="provBorderPreview" style="background:#666666;cursor:pointer;" onclick="openColorPopup('provBorderPreview', provBorderColor, c => setProvBorderColor(c))"></div>
+              <span style="font-size:12px;color:var(--muted);">いろ</span>
+            </div>
+            <div class="slider-row">
+              <span class="slider-label">ふとさ</span>
+              <input type="range" id="prov-border-width" min="0" max="4" step="0.25" value="0.5" style="flex:1;accent-color:var(--accent);" oninput="setProvBorderWidth(this.value)">
+              <span class="slider-val" id="prov-border-width-val">0.5</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-size:11px;color:var(--muted);min-width:60px;">しゅるい</span>
+              <select class="sel" id="prov-border-dash" onchange="setProvBorderDash(this.value)" style="flex:1;font-size:11px;">
+                <option value="none">──── 実線</option>
+                <option value="4,3">- - - - 破線</option>
+                <option value="2,2">···· 点線</option>
+                <option value="8,3,2,3">─·─· 一点鎖線</option>
+              </select>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -571,7 +595,14 @@ function setPaintMode(mode) {
 }
 
 // しゅうへんかん かくにん ずみ くに（こっき ひょうじ OK）
-const PROVINCE_OK_COUNTRIES = new Set(['JP','TW','RU','FR','DE','GB','MX','FI','SE','KR','KP','CA']);
+const PROVINCE_OK_COUNTRIES = new Set([
+  'JP','TW','RU','FR','DE','GB','MX','FI','SE','KR','KP','CA',
+  'BR','AR','AU','NZ','KH','IS','AZ','AE','DZ','AL','AM','AO','AG','YE',
+  'IL','IQ','IR','ID','UG','UA','UZ','UY','EC','EG','ET','ER','SV',
+  'AT','OM','NL','GH','CV','GY','QA','GA','CM','GM','GN','GW','CY','CU',
+  'GR','KG','GT','GU','CK','GD','HR','KE','CI','CR','KV','KM','CO','CG','CD','SA',
+  'TH','VN','MM',
+]);
 
 // しゅうくに セレクト を つくる
 function buildProvinceCountrySel() {
@@ -603,10 +634,33 @@ async function addProvinceLayer() {
     provinceLayerCountries.push(iso2);
     renderProvinceTags();
     drawProvinceLayer();
-    toast(PROVINCE_COUNTRIES[iso2] + ' の しゅう ついか したヨ！');
+      toast(PROVINCE_COUNTRIES[iso2] + ' の しゅう ついか したヨ！');
+    zoomToProvinceCountry(iso2);
   } catch(e) {
     console.error(e);
     toast('データ よみこみ しっぱい…');
+  }
+}
+
+function zoomToProvinceCountry(iso2) {
+  const features = provinceFeatureCache[iso2];
+  if (!features || !features.length) return;
+  let minLon=180, maxLon=-180, minLat=90, maxLat=-90;
+  features.forEach(f => {
+    const geom = f.geometry;
+    if (!geom) return;
+    function scanCoords(coords) {
+      if (!coords) return;
+      if (typeof coords[0] === 'number') {
+        minLon=Math.min(minLon,coords[0]); maxLon=Math.max(maxLon,coords[0]);
+        minLat=Math.min(minLat,coords[1]); maxLat=Math.max(maxLat,coords[1]);
+      } else { coords.forEach(scanCoords); }
+    }
+    if (geom.type==='Polygon') geom.coordinates.forEach(scanCoords);
+    else if (geom.type==='MultiPolygon') geom.coordinates.forEach(p=>p.forEach(scanCoords));
+  });
+  if (minLon<maxLon && minLat<maxLat) {
+    lmap.fitBounds([[minLat,minLon],[maxLat,maxLon]], {padding:[40,40], maxZoom:6});
   }
 }
 
@@ -777,6 +831,26 @@ function removeProvinceLayer(iso2) {
   toast(PROVINCE_COUNTRIES[iso2] + ' の しゅう のぞいたヨ！');
 }
 
+// しゅう さかいせん せってい
+let provBorderColor = '#666666';
+let provBorderWidth = 0.5;
+let provBorderDash = 'none';
+
+function setProvBorderColor(c) {
+  provBorderColor = c;
+  document.getElementById('provBorderPreview').style.background = c;
+  drawProvinceLayer();
+}
+function setProvBorderWidth(v) {
+  provBorderWidth = parseFloat(v);
+  document.getElementById('prov-border-width-val').textContent = v;
+  drawProvinceLayer();
+}
+function setProvBorderDash(v) {
+  provBorderDash = v;
+  drawProvinceLayer();
+}
+
 function drawProvinceLayer() {
   if (!gProvince) return;
   gProvince.selectAll('path').remove();
@@ -792,8 +866,9 @@ function drawProvinceLayer() {
         .datum(f)
         .attr('d', d1)
         .attr('fill', provincePaintMap.get(uid) || landColor)
-        .attr('stroke', borderColor)
-        .attr('stroke-width', Math.max(0.3, borderWidth * 0.6))
+        .attr('stroke', provBorderColor)
+        .attr('stroke-width', provBorderWidth)
+        .attr('stroke-dasharray', provBorderDash === 'none' ? null : provBorderDash)
         .style('cursor', 'pointer')
         .on('mouseover', function(ev, d) {
           const name = d.properties && (d.properties.name || d.properties['woe-name'] || d.properties['hc-key']) || uid;
