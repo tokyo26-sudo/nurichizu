@@ -126,7 +126,7 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
   <button class="hamburger" id="hamburger" onclick="toggleDrawer()"><span></span><span></span><span></span></button>
   <div class="logo">🌍</div>
   <div>
-    <div class="title">せかい ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v1.2.10</span></div>
+    <div class="title">せかい ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v1.2.11</span></div>
     <div class="subtitle">せかいの くに・しゅう ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -1081,12 +1081,9 @@ function updateProjection() {
     .scale(scale)
     .translate([origin.x, origin.y]);
   // clipExtent で SVG えがき はんい を せいげん → 巨大座標 ふせぐ
-  const mapWrap = document.getElementById('map-wrap');
-  const w = mapWrap ? mapWrap.offsetWidth : 2000;
-  const h = mapWrap ? mapWrap.offsetHeight : 2000;
-  const margin = 200;
+  const margin = 500;
   d3Path = d3.geoPath().projection(d3Projection)
-    .clipExtent([[-margin, -margin], [w + margin, h + margin]]);
+    .clipExtent([[-margin, -margin], [window.innerWidth + margin, window.innerHeight + margin]]);
 }
 
 // 1ピクセルあたりの経度差を計算（+360度ずらしたときのXオフセット）
