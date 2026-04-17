@@ -126,7 +126,7 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
   <button class="hamburger" id="hamburger" onclick="toggleDrawer()"><span></span><span></span><span></span></button>
   <div class="logo">🌍</div>
   <div>
-    <div class="title">せかい ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v1.2.13</span></div>
+    <div class="title">せかい ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v1.3.0</span></div>
     <div class="subtitle">せかいの くに・しゅう ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -261,6 +261,26 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
       </div>
     </div>
 
+    <!-- しゅうめい ひょうじ -->
+    <div class="sec" id="prov-label-sec" style="display:none;">
+      <div class="sec-h">しゅうめい ひょうじ</div>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--muted);">
+        <input type="checkbox" id="prov-label-toggle" onchange="toggleProvLabels(this.checked)" style="accent-color:var(--accent);width:14px;height:14px;">
+        ひょうじ する
+      </label>
+      <div id="prov-label-detail" style="margin-top:8px;display:flex;flex-direction:column;gap:7px;opacity:0.4;pointer-events:none;">
+        <div class="color-row">
+          <div class="color-preview" id="provLabelColorPreview" style="background:#222222;cursor:pointer;" onclick="openColorPopup('provLabelColorPreview', provLabelColor, c => setProvLabelColor(c))"></div>
+          <span style="font-size:12px;color:var(--muted);">もじ いろ</span>
+        </div>
+        <div class="slider-row">
+          <span class="slider-label">おおきさ</span>
+          <input type="range" id="prov-label-size" min="6" max="20" step="1" value="8" style="flex:1;accent-color:var(--accent);" oninput="setProvLabelSize(this.value)">
+          <span class="slider-val" id="prov-label-size-val">8</span>
+        </div>
+      </div>
+    </div>
+
     <!-- さかいせん -->
     <div class="sec">
       <div class="sec-h">こっきょうせん</div>
@@ -297,19 +317,19 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
       <div class="sec-h">かいがんせん</div>
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
         <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--muted);">
-          <input type="checkbox" id="coast-toggle" onchange="toggleCoast(this.checked)" style="accent-color:var(--accent);width:14px;height:14px;">
+          <input type="checkbox" id="coast-toggle" checked onchange="toggleCoast(this.checked)" style="accent-color:var(--accent);width:14px;height:14px;">
           ひょうじ する
         </label>
       </div>
-      <div style="display:flex;flex-direction:column;gap:7px;opacity:0.4;" id="coast-detail">
+      <div style="display:flex;flex-direction:column;gap:7px;" id="coast-detail">
         <div class="color-row">
           <div class="color-preview" id="coastPreview" style="background:#444444;cursor:pointer;" onclick="openColorPopup('coastPreview', coastColor, c => setCoastColor(c))"></div>
           <span style="font-size:12px;color:var(--muted);">いろ</span>
         </div>
         <div class="slider-row">
           <span class="slider-label">ふとさ</span>
-          <input type="range" id="coast-width" min="0" max="4" step="0.25" value="1.0" style="flex:1;accent-color:var(--accent);" oninput="setCoastWidth(this.value)">
-          <span class="slider-val" id="coast-width-val">1.0</span>
+          <input type="range" id="coast-width" min="0" max="4" step="0.25" value="0.5" style="flex:1;accent-color:var(--accent);" oninput="setCoastWidth(this.value)">
+          <span class="slider-val" id="coast-width-val">0.5</span>
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
           <span style="font-size:11px;color:var(--muted);min-width:60px;">しゅるい</span>
@@ -335,7 +355,7 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
           <div class="color-preview" id="seaColorPreview" style="background:#c8d8e8;cursor:pointer;" onclick="openColorPopup('seaColorPreview', seaColor, c => setSeaColor(c))"></div>
           <span style="font-size:12px;color:var(--muted);">うみ いろ</span>
         </div>
-        <button class="btn" onclick="resetColors()" style="margin-top:2px;font-size:11px;">↩ デフォルトに もどす</button>
+        <button class="btn" onclick="resetColors()" style="margin-top:2px;font-size:11px;">↩ 全ての色をリセット</button>
       </div>
     </div>
 
@@ -346,23 +366,31 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
       <button class="btn" onclick="document.getElementById('loadIn').click()">📂 ロード（JSON）</button>
       <input type="file" id="loadIn" accept=".json" style="display:none" onchange="loadData(event)">
       <button class="btn danger" onclick="clearAll()">🗑 ぜんぶ クリア</button>
+      <div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px;">
+        <button class="btn mode-disabled" style="opacity:0.4;pointer-events:none;">📥 CSV/Excel よみこみ<br><span style="font-size:9px;">じゅんびちゅう</span></button>
+        <button class="btn mode-disabled" style="opacity:0.4;pointer-events:none;margin-top:4px;">📤 CSV/Excel だしだし<br><span style="font-size:9px;">じゅんびちゅう</span></button>
+      </div>
     </div>
 
     <!-- ほぞん -->
     <div class="sec">
       <div class="sec-h">ほぞん</div>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--muted);margin-bottom:6px;">
+        <input type="checkbox" id="legend-toggle" checked style="accent-color:var(--accent);width:14px;height:14px;">
+        はんれい を PNG に ふくめる
+      </label>
       <button class="btn primary" onclick="capturePNG()">📷 PNG で ほぞん</button>
     </div>
 
     <!-- ぬった リスト -->
     <div class="sec" style="flex:1;padding-bottom:0;">
       <div id="mlist-country-wrap">
-        <div class="sec-h">ぬった くに</div>
+        <div class="sec-h" id="mlist-country-title" contenteditable="true" spellcheck="false" style="cursor:text;outline:none;border-bottom:1px dashed var(--border);" title="クリックして へんしゅう">ぬった くに</div>
         <div class="empty" id="mlist-empty" style="padding:12px 0;">クリックして くにを ぬってみよう！</div>
         <div id="mlist"></div>
       </div>
       <div id="mlist-province-wrap" style="display:none;">
-        <div class="sec-h" style="margin-top:4px;">ぬった しゅう</div>
+        <div class="sec-h" id="mlist-province-title" contenteditable="true" spellcheck="false" style="cursor:text;outline:none;border-bottom:1px dashed var(--border);margin-top:4px;" title="クリックして へんしゅう">ぬった しゅう</div>
         <div class="empty" id="mlist-province-empty" style="padding:12px 0;">しゅう を クリックして ぬってみよう！</div>
         <div id="mlist-province"></div>
       </div>
@@ -592,6 +620,7 @@ function setPaintMode(mode) {
   document.getElementById('province-ui').style.display = mode==='province' ? 'block' : 'none';
   document.getElementById('mlist-country-wrap').style.display = mode==='country' ? 'block' : 'none';
   document.getElementById('mlist-province-wrap').style.display = mode==='province' ? 'block' : 'none';
+  document.getElementById('prov-label-sec').style.display = mode==='province' ? 'block' : 'none';
 }
 
 // しゅうへんかん かくにん ずみ くに（こっき ひょうじ OK）
@@ -612,6 +641,7 @@ const PROVINCE_OK_COUNTRIES = new Set([
   'MG','MW','ML','MY','MU','MR','MZ','MC','MD','MA','MN',
   'JO','LV','LT','LY','LI','LR','RO','LU','RW','LS','LB',
   'EH','GQ','CF','TL','ZA','SS','VI','MK','MP',
+  'US','IT','IN','CN','AD','AF','AS','EE','IE','KZ','LA','ME','MT','NO','SI','SZ',
 ]);
 
 // しゅうくに セレクト を つくる
@@ -873,6 +903,58 @@ function removeProvinceLayer(iso2) {
   toast(PROVINCE_COUNTRIES[iso2] + ' の しゅう のぞいたヨ！');
 }
 
+// しゅうめい ひょうじ
+let provLabelOn = false, provLabelColor = '#222222', provLabelSize = 8;
+let gProvLabel = null;
+
+function toggleProvLabels(on) {
+  provLabelOn = on;
+  const detail = document.getElementById('prov-label-detail');
+  detail.style.opacity = on ? '1' : '0.4';
+  detail.style.pointerEvents = on ? 'auto' : 'none';
+  redrawProvLabels();
+}
+function setProvLabelColor(c) {
+  provLabelColor = c;
+  document.getElementById('provLabelColorPreview').style.background = c;
+  redrawProvLabels();
+}
+function setProvLabelSize(v) {
+  provLabelSize = parseInt(v);
+  document.getElementById('prov-label-size-val').textContent = v;
+  redrawProvLabels();
+}
+function redrawProvLabels() {
+  if (!gProvLabel) return;
+  gProvLabel.selectAll('text').remove();
+  if (!provLabelOn || !d3Path) return;
+  provinceLayerCountries.forEach(iso2 => {
+    const features = provinceFeatureCache[iso2] || [];
+    features.forEach(f => {
+      const name = f.properties && (f.properties.name || f.properties['woe-name'] || f.properties['hc-key']);
+      if (!name) return;
+      try {
+        const centroid = d3.geoCentroid(f);
+        if (!centroid || isNaN(centroid[0])) return;
+        const area = d3.geoArea(f);
+        if (area < 0.00005) return;
+        const pt = d3Projection(centroid);
+        if (!pt) return;
+        gProvLabel.append('text')
+          .attr('x', pt[0]).attr('y', pt[1])
+          .attr('text-anchor', 'middle').attr('dominant-baseline', 'middle')
+          .attr('font-size', provLabelSize)
+          .attr('font-family', "'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif")
+          .attr('fill', provLabelColor)
+          .attr('stroke', 'white').attr('stroke-width', '2')
+          .attr('paint-order', 'stroke')
+          .style('pointer-events', 'none')
+          .text(name);
+      } catch(e) {}
+    });
+  });
+}
+
 // しゅう さかいせん せってい
 let provBorderColor = '#666666';
 let provBorderWidth = 0.5;
@@ -976,7 +1058,21 @@ function updateProvinceSidebar() {
   }
   Object.entries(colorGroups).forEach(([color, items]) => {
     const grp = document.createElement('div');
-    grp.innerHTML = `<div class="grp-h" style="border-color:${color};color:${color};">■ ${color}</div>`;
+    const labelText = colorLabels.get(color) || color;
+    const grpH = document.createElement('div');
+    grpH.className = 'grp-h';
+    grpH.style.cssText = `border-color:${color};color:${color};cursor:pointer;`;
+    grpH.title = 'クリックして なまえ へんしゅう';
+    grpH.textContent = '■ ' + labelText;
+    grpH.onclick = () => {
+      const newLabel = prompt('グループ なまえ を いれてください', colorLabels.get(color) || '');
+      if (newLabel === null) return;
+      if (newLabel.trim()) colorLabels.set(color, newLabel.trim());
+      else colorLabels.delete(color);
+      updateSidebar();
+      updateProvinceSidebar();
+    };
+    grp.appendChild(grpH);
     items.sort((a,b) => a.name.localeCompare(b.name)).forEach(({ name, uid, flag, color: c }) => {
       const mi = document.createElement('div'); mi.className = 'mi';
       mi.innerHTML = `<span style="font-size:15px;line-height:1;flex-shrink:0;">${flag}</span><span class="mi-name" style="color:${c};font-weight:600;">${name}</span><span class="mi-clear" data-uid="${uid}">✕</span>`;
@@ -996,10 +1092,11 @@ function updateProvinceSidebar() {
 // データ
 // =====================================================
 let paintMap = new Map(); // uid → color
+let colorLabels = new Map(); // color → ラベル名
 let countryFeatures = []; // くにポリゴン
 let landColor = '#dcd2c8', seaColor = '#c8d8e8';
 let borderColor = '#888888', borderWidth = 0.5, borderOn = true, borderDash = 'none';
-let coastColor = '#444444', coastWidth = 1.0, coastOn = false, coastDash = 'none';
+let coastColor = '#444444', coastWidth = 0.5, coastOn = true, coastDash = 'none';
 
 // くに の UID は ISO_A3 コード
 function getCountryId(f) {
@@ -1046,9 +1143,37 @@ function setLandColor(c) {
 }
 function setSeaColor(c) { seaColor=c; document.getElementById('seaColorPreview').style.background=c; document.querySelector('#leaflet-map').style.backgroundColor=c; }
 function resetColors() {
+  // りくいろ・うみいろ
   setLandColor('#dcd2c8');
   setSeaColor('#c8d8e8');
-  toast('いろ デフォルトに もどしたヨ！');
+  // こっきょうせん
+  setBorderColor('#888888');
+  document.getElementById('border-width').value = 0.5;
+  setBorderWidth(0.5);
+  setBorderDash('none');
+  document.getElementById('border-dash').value = 'none';
+  // かいがんせん
+  setCoastColor('#444444');
+  document.getElementById('coast-width').value = 1.0;
+  setCoastWidth(1.0);
+  setCoastDash('none');
+  document.getElementById('coast-dash').value = 'none';
+  // くにめい もじいろ
+  setLabelColor('#222222');
+  document.getElementById('label-size').value = 10;
+  setLabelSize(10);
+  // しゅうさかいせん
+  setProvBorderColor('#666666');
+  document.getElementById('prov-border-width').value = 0.5;
+  setProvBorderWidth(0.5);
+  setProvBorderDash('none');
+  document.getElementById('prov-border-dash').value = 'none';
+  // じどういろかえ スロット
+  autoColorSlots = ['#e05030','#2080c0','#60a840','#d4b020'];
+  autoColorIndex = 0;
+  renderAutoSlots();
+  setCurrentColor('#e05030');
+  toast('全ての色をリセットしたヨ！');
 }
 
 // =====================================================
@@ -1076,9 +1201,10 @@ function initMap() {
   const svgLayer = L.svg({padding:0}).addTo(lmap);
   svgOverlay = d3.select(svgLayer._container);
   gPoly     = svgOverlay.append('g').attr('class','g-poly');
-  gProvince = svgOverlay.append('g').attr('class','g-province');
-  gBorder   = svgOverlay.append('g').attr('class','g-border');
-  gLabel    = svgOverlay.append('g').attr('class','g-label');
+  gProvince  = svgOverlay.append('g').attr('class','g-province');
+  gBorder    = svgOverlay.append('g').attr('class','g-border');
+  gProvLabel = svgOverlay.append('g').attr('class','g-prov-label');
+  gLabel     = svgOverlay.append('g').attr('class','g-label');
   buildProvinceCountrySel();
   // D3 projection を はじめに つくる
   updateProjection();
@@ -1135,6 +1261,7 @@ function updateSvgOverlay() {
   gPoly.selectAll('path').each(function(d){ d3.select(this).attr('d', geoPathFn(d)); });
   drawProvinceLayer();
   redrawBorders();
+  redrawProvLabels();
   redrawLabels();
 }
 
@@ -1455,7 +1582,21 @@ function updateSidebar() {
   });
   Object.entries(colorGroups).forEach(([color, items]) => {
     const grp = document.createElement('div');
-    grp.innerHTML = `<div class="grp-h" style="border-color:${color};color:${color};">■ ${color}</div>`;
+    const labelText = colorLabels.get(color) || color;
+    const grpH = document.createElement('div');
+    grpH.className = 'grp-h';
+    grpH.style.cssText = `border-color:${color};color:${color};cursor:pointer;`;
+    grpH.title = 'クリックして なまえ へんしゅう';
+    grpH.textContent = '■ ' + labelText;
+    grpH.onclick = () => {
+      const newLabel = prompt('グループ なまえ を いれてください', colorLabels.get(color) || '');
+      if (newLabel === null) return;
+      if (newLabel.trim()) colorLabels.set(color, newLabel.trim());
+      else colorLabels.delete(color);
+      updateSidebar();
+      updateProvinceSidebar();
+    };
+    grp.appendChild(grpH);
     items.sort((a,b)=>a.name.localeCompare(b.name)).forEach(({name,id,color:c}) => {
       const flag = getFlagEmoji(id);
       const mi = document.createElement('div'); mi.className='mi';
@@ -1496,10 +1637,11 @@ function updateInfobar(text) { document.getElementById('ib-name').textContent=te
 // =====================================================
 function saveData() {
   const obj = {
-    version:2,
+    version:3,
     paintMap:Object.fromEntries(paintMap),
     provincePaintMap:Object.fromEntries(provincePaintMap),
-    provinceLayerCountries:[...provinceLayerCountries]
+    provinceLayerCountries:[...provinceLayerCountries],
+    colorLabels:Object.fromEntries(colorLabels),
   };
   const blob = new Blob([JSON.stringify(obj,null,2)],{type:'application/json'});
   const a = document.createElement('a'); a.href=URL.createObjectURL(blob);
@@ -1518,6 +1660,7 @@ function loadData(ev) {
         provincePaintMap.clear();
         Object.entries(obj.provincePaintMap).forEach(([k,v])=>provincePaintMap.set(k,v));
       }
+      if(obj.colorLabels){colorLabels.clear();Object.entries(obj.colorLabels).forEach(([k,v])=>colorLabels.set(k,v));}
       if(obj.provinceLayerCountries && obj.provinceLayerCountries.length){
         provinceLayerCountries = [...obj.provinceLayerCountries];
         Promise.all(provinceLayerCountries.map(iso2=>loadProvinceData(iso2))).then(()=>{
@@ -1537,6 +1680,7 @@ function clearAll() {
   if(!confirm('ぜんぶ クリア しますか？'))return;
   paintMap.clear();
   provincePaintMap.clear();
+  colorLabels.clear();
   provinceLayerCountries=[];
   gPoly.selectAll('path').attr('fill',landColor);
   if(gProvince) gProvince.selectAll('path').remove();
@@ -1623,6 +1767,49 @@ async function capturePNG() {
         img.onerror = reject;
         img.src = url;
       });
+    }
+
+    // ④ はんれい 描画
+    const showLegend = document.getElementById('legend-toggle')?.checked;
+    if (showLegend) {
+      const countryTitle = document.getElementById('mlist-country-title')?.textContent || 'ぬった くに';
+      const provTitle = document.getElementById('mlist-province-title')?.textContent || 'ぬった しゅう';
+      // いろグループを集める
+      const groups = new Map();
+      for (const [uid, color] of paintMap) {
+        if (!groups.has(color)) groups.set(color, []);
+      }
+      for (const [uid, color] of provincePaintMap) {
+        if (!groups.has(color)) groups.set(color, []);
+      }
+      if (groups.size > 0) {
+        const pad = 14, sw = 16, sh = 16, lineH = 22, titleH = 26;
+        const rows = groups.size;
+        const legendW = 220;
+        const legendH = pad * 2 + titleH + rows * lineH;
+        const lx = w - legendW - 12;
+        const ly = h - legendH - 12;
+        ctx.fillStyle = 'rgba(255,255,255,0.88)';
+        ctx.beginPath();
+        ctx.roundRect ? ctx.roundRect(lx, ly, legendW, legendH, 6) : ctx.rect(lx, ly, legendW, legendH);
+        ctx.fill();
+        ctx.strokeStyle = '#cccccc';
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+        ctx.fillStyle = '#333';
+        ctx.font = `bold 13px 'Hiragino Kaku Gothic ProN',sans-serif`;
+        ctx.fillText(countryTitle + (provincePaintMap.size ? '・' + provTitle : ''), lx + pad, ly + pad + 14);
+        let gy = ly + pad + titleH;
+        for (const [color] of groups) {
+          const label = colorLabels.get(color) || color;
+          ctx.fillStyle = color;
+          ctx.fillRect(lx + pad, gy + (lineH - sh) / 2, sw, sh);
+          ctx.fillStyle = '#333';
+          ctx.font = `12px 'Hiragino Kaku Gothic ProN',sans-serif`;
+          ctx.fillText(label, lx + pad + sw + 8, gy + lineH / 2 + 4);
+          gy += lineH;
+        }
+      }
     }
 
     // ④ ダウンロド
