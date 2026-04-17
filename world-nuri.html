@@ -8,7 +8,7 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <script src="https://unpkg.com/topojson-client@3/dist/topojson-client.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/proj4@2.9.0/dist/proj4.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
 :root {
@@ -126,7 +126,7 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
   <button class="hamburger" id="hamburger" onclick="toggleDrawer()"><span></span><span></span><span></span></button>
   <div class="logo">🌍</div>
   <div>
-    <div class="title">せかい ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v1.2.0</span></div>
+    <div class="title">せかい ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v1.2.1</span></div>
     <div class="subtitle">せかいの くに・しゅう ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -607,8 +607,19 @@ async function addProvinceLayer() {
   }
 }
 
+async function waitForProj4() {
+  if (typeof proj4 !== 'undefined') return;
+  return new Promise(resolve => {
+    const check = setInterval(() => {
+      if (typeof proj4 !== 'undefined') { clearInterval(check); resolve(); }
+    }, 50);
+    setTimeout(() => { clearInterval(check); resolve(); }, 5000); // 5秒タイムアウト
+  });
+}
+
 async function loadProvinceData(iso2) {
   if (provinceFeatureCache[iso2]) return;
+  await waitForProj4();
   const cc = iso2.toLowerCase();
   const url = `https://cdn.jsdelivr.net/npm/@highcharts/map-collection@2.3.2/countries/${cc}/${cc}-all.js`;
   const res = await fetch(url);
@@ -658,17 +669,27 @@ async function loadProvinceData(iso2) {
 }
 
 // Highcharts ローカル座標 → WGS84 経緯度 へんかん
-// 正しい式: highmaps.src.js line 52091-52092 より
-//   x_proj = ((px - jsonmarginX) / jsonres - xpan) / scale + xoffset
-//   y_proj = ((py - jsonmarginY) / jsonres + ypan) / scale + yoffset
+// highmaps.src.js の chartTransformToLatLon を参考に実装
 function convertHCGeometry(geom, tf) {
   if (!geom) return;
-  const { scale, jsonres, jsonmarginX=0, jsonmarginY=0, xoffset=0, yoffset=0, crs, xpan=0, ypan=0 } = tf;
+  const {
+    scale=1, jsonres=1, jsonmarginX=0, jsonmarginY=0,
+    xoffset=0, yoffset=0, crs='', xpan=0, ypan=0, rotation
+  } = tf;
+  const cosAngle = tf.cosAngle || (rotation && Math.cos(rotation)) || 0;
+  const sinAngle = tf.sinAngle || (rotation && Math.sin(rotation)) || 0;
 
   function toLatLng(hcx, hcy) {
     if (!crs) return [hcx, hcy]; // CRS なし = すでに WGS84
-    const xm = ((hcx - jsonmarginX) / jsonres - xpan) / scale + xoffset;
-    const ym = ((hcy - jsonmarginY) / jsonres + ypan) / scale + yoffset;
+    // ステップ1: Highcharts ローカル座標 → 投影座標（メートル）
+    let xm = ((hcx - jsonmarginX) / jsonres - xpan) / scale + xoffset;
+    let ym = ((hcy - jsonmarginY) / jsonres + ypan) / scale + yoffset;
+    // ステップ2: rotation がある場合は逆回転
+    if (rotation) {
+      const rx = xm * cosAngle + ym * (-sinAngle);
+      const ry = xm * sinAngle + ym * cosAngle;
+      xm = rx; ym = ry;
+    }
     return proj4WGS84(crs, xm, ym);
   }
   function convertCoords(coords) {
@@ -707,15 +728,20 @@ function pointInPolygon2D(feature, poly2d, defaultTf) {
 // proj4js で CRS → WGS84 へんかん（キャシュ あり）
 const _proj4Cache = {};
 function proj4WGS84(crsStr, xm, ym) {
-  if (!crsStr) return [0, 0];
+  if (!crsStr) return [xm, ym]; // CRSなし = すでにWGS84
+  if (typeof proj4 === 'undefined') {
+    console.warn('proj4 not loaded yet');
+    return [xm, ym];
+  }
   try {
     if (!_proj4Cache[crsStr]) {
       _proj4Cache[crsStr] = proj4(crsStr, 'WGS84');
     }
-    const [lon, lat] = _proj4Cache[crsStr].forward([xm, ym]);
-    return [lon, lat];
+    const result = _proj4Cache[crsStr].forward([xm, ym]);
+    return result;
   } catch(e) {
-    return [0, 0];
+    console.warn('proj4 error:', crsStr, e.message);
+    return [xm, ym];
   }
 }
 
