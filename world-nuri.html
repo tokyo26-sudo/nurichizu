@@ -126,7 +126,7 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
   <button class="hamburger" id="hamburger" onclick="toggleDrawer()"><span></span><span></span><span></span></button>
   <div class="logo">🌍</div>
   <div>
-    <div class="title">せかい ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v1.3.1</span></div>
+    <div class="title">せかい ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v1.3.2</span></div>
     <div class="subtitle">せかいの くに・しゅう ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -308,6 +308,41 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
             <option value="2,2">···· 点線</option>
             <option value="8,3,2,3">─·─· 一点鎖線</option>
           </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- 都市ひょうじ -->
+    <div class="sec">
+      <div class="sec-h">都市 ひょうじ</div>
+      <div style="display:flex;gap:4px;margin-bottom:6px;">
+        <select class="sel" id="city-country-sel" style="flex:1;font-size:11px;">
+          <option value="">── くに えらぶ ──</option>
+        </select>
+        <button class="btn" style="margin-top:0;width:auto;padding:4px 8px;flex-shrink:0;" onclick="addCityLayer()">＋</button>
+      </div>
+      <div class="pref-tags" id="city-tags"></div>
+      <div id="city-list-wrap" style="margin-top:8px;max-height:200px;overflow-y:auto;display:none;">
+        <div id="city-list"></div>
+      </div>
+      <div style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px;display:flex;flex-direction:column;gap:6px;">
+        <div class="color-row">
+          <div class="color-preview" id="cityDotColorPreview" style="background:#cc3333;cursor:pointer;" onclick="openColorPopup('cityDotColorPreview', cityDotColor, c=>{cityDotColor=c;document.getElementById('cityDotColorPreview').style.background=c;redrawCities();})"></div>
+          <span style="font-size:11px;color:var(--muted);">ドット いろ</span>
+        </div>
+        <div class="color-row">
+          <div class="color-preview" id="cityLabelColorPreview" style="background:#222222;cursor:pointer;" onclick="openColorPopup('cityLabelColorPreview', cityLabelColor, c=>{cityLabelColor=c;document.getElementById('cityLabelColorPreview').style.background=c;redrawCities();})"></div>
+          <span style="font-size:11px;color:var(--muted);">もじ いろ</span>
+        </div>
+        <div class="slider-row">
+          <span class="slider-label">ドット</span>
+          <input type="range" id="city-dot-size" min="1" max="10" step="0.5" value="3" style="flex:1;accent-color:var(--accent);" oninput="cityDotSize=parseFloat(this.value);document.getElementById('city-dot-size-val').textContent=this.value;redrawCities();">
+          <span class="slider-val" id="city-dot-size-val">3</span>
+        </div>
+        <div class="slider-row">
+          <span class="slider-label">もじ</span>
+          <input type="range" id="city-label-size" min="6" max="20" step="1" value="10" style="flex:1;accent-color:var(--accent);" oninput="cityLabelSize=parseInt(this.value);document.getElementById('city-label-size-val').textContent=this.value;redrawCities();">
+          <span class="slider-val" id="city-label-size-val">10</span>
         </div>
       </div>
     </div>
@@ -1206,8 +1241,10 @@ function initMap() {
   gProvince  = svgOverlay.append('g').attr('class','g-province');
   gBorder    = svgOverlay.append('g').attr('class','g-border');
   gProvLabel = svgOverlay.append('g').attr('class','g-prov-label');
+  gCities    = svgOverlay.append('g').attr('class','g-cities');
   gLabel     = svgOverlay.append('g').attr('class','g-label');
   buildProvinceCountrySel();
+  loadCitiesData().catch(e => console.warn('cities load failed:', e));
   // D3 projection を はじめに つくる
   updateProjection();
   lmap.on('zoom move zoomend moveend', updateSvgOverlay);
@@ -1264,7 +1301,142 @@ function updateSvgOverlay() {
   drawProvinceLayer();
   redrawBorders();
   redrawProvLabels();
+  redrawCities();
   redrawLabels();
+}
+
+// =====================================================
+// 都市 ひょうじ
+// =====================================================
+const CITIES_DATA_URL = 'https://tokyo26-sudo.github.io/nurichizu/data/cities_light.json';
+let citiesData = null;
+let cityLayerCountries = [];
+let cityVisible = {};
+let cityDotColor = '#cc3333';
+let cityLabelColor = '#222222';
+let cityDotSize = 3;
+let cityLabelSize = 10;
+let gCities = null;
+
+async function loadCitiesData() {
+  if (citiesData) return;
+  const res = await fetch(CITIES_DATA_URL);
+  citiesData = await res.json();
+  buildCityCountrySel();
+}
+
+function buildCityCountrySel() {
+  const sel = document.getElementById('city-country-sel');
+  if (!sel || !citiesData) return;
+  sel.innerHTML = '<option value="">── くに えらぶ ──</option>';
+  Object.entries(PROVINCE_COUNTRIES).sort((a,b)=>a[1].localeCompare(b[1],'ja')).forEach(([iso2, name]) => {
+    if (!citiesData[iso2]) return;
+    const flag = PROVINCE_OK_COUNTRIES.has(iso2) ? getFlag2(iso2) + ' ' : '';
+    const opt = document.createElement('option');
+    opt.value = iso2;
+    opt.textContent = flag + name;
+    sel.appendChild(opt);
+  });
+}
+
+async function addCityLayer() {
+  const sel = document.getElementById('city-country-sel');
+  const iso2 = sel.value;
+  if (!iso2) { toast('くに えらんでくださいネ！'); return; }
+  if (cityLayerCountries.includes(iso2)) { toast('もう ついかしてますヨ！'); return; }
+  if (!citiesData) { toast('データ よみこみちゅう…'); await loadCitiesData(); }
+  cityLayerCountries.push(iso2);
+  const cities = citiesData[iso2] || [];
+  cities.forEach(c => { cityVisible[iso2+'|'+c.n] = true; });
+  renderCityTags();
+  renderCityList();
+  redrawCities();
+  toast((PROVINCE_COUNTRIES[iso2]||iso2) + ' の 都市 ついかしたヨ！');
+}
+
+function removeCityLayer(iso2) {
+  cityLayerCountries = cityLayerCountries.filter(c => c !== iso2);
+  const cities = (citiesData && citiesData[iso2]) || [];
+  cities.forEach(c => { delete cityVisible[iso2+'|'+c.n]; });
+  renderCityTags();
+  renderCityList();
+  redrawCities();
+}
+
+function renderCityTags() {
+  const wrap = document.getElementById('city-tags');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  cityLayerCountries.forEach(iso2 => {
+    const name = PROVINCE_COUNTRIES[iso2] || iso2;
+    const flag = getFlag2(iso2);
+    const tag = document.createElement('span');
+    tag.className = 'pref-tag active';
+    tag.innerHTML = flag + ' ' + name + ' <span style="opacity:.7;cursor:pointer;">✕</span>';
+    tag.querySelector('span').onclick = e => { e.stopPropagation(); removeCityLayer(iso2); };
+    wrap.appendChild(tag);
+  });
+  const listWrap = document.getElementById('city-list-wrap');
+  if (listWrap) listWrap.style.display = cityLayerCountries.length ? 'block' : 'none';
+}
+
+function renderCityList() {
+  const list = document.getElementById('city-list');
+  if (!list) return;
+  list.innerHTML = '';
+  cityLayerCountries.forEach(iso2 => {
+    const cities = (citiesData && citiesData[iso2]) || [];
+    const name = PROVINCE_COUNTRIES[iso2] || iso2;
+    const flag = getFlag2(iso2);
+    const grp = document.createElement('div');
+    grp.innerHTML = `<div style="font-size:10px;color:var(--muted);padding:4px 0 2px;border-bottom:1px solid var(--border);margin-bottom:4px;">${flag} ${name}</div>`;
+    const sorted = [...cities].sort((a,b) => (b.c?1:0)-(a.c?1:0) || a.n.localeCompare(b.n));
+    sorted.forEach(c => {
+      const key = iso2+'|'+c.n;
+      const row = document.createElement('label');
+      row.style.cssText = 'display:flex;align-items:center;gap:5px;padding:2px 0;cursor:pointer;font-size:11px;';
+      const chk = document.createElement('input');
+      chk.type = 'checkbox';
+      chk.checked = cityVisible[key] !== false;
+      chk.style.cssText = 'accent-color:var(--accent);width:12px;height:12px;flex-shrink:0;';
+      chk.onchange = () => { cityVisible[key] = chk.checked; redrawCities(); };
+      const lbl = document.createElement('span');
+      lbl.textContent = (c.c ? '★ ' : '') + c.n;
+      lbl.style.color = c.c ? 'var(--accent)' : 'var(--text)';
+      row.appendChild(chk); row.appendChild(lbl);
+      grp.appendChild(row);
+    });
+    list.appendChild(grp);
+  });
+}
+
+function redrawCities() {
+  if (!gCities || !d3Projection) return;
+  gCities.selectAll('*').remove();
+  cityLayerCountries.forEach(iso2 => {
+    const cities = (citiesData && citiesData[iso2]) || [];
+    cities.forEach(c => {
+      const key = iso2+'|'+c.n;
+      if (!cityVisible[key]) return;
+      const pt = d3Projection([c.o, c.a]);
+      if (!pt || isNaN(pt[0]) || isNaN(pt[1])) return;
+      const g = gCities.append('g').style('pointer-events','none');
+      g.append('circle')
+        .attr('cx', pt[0]).attr('cy', pt[1])
+        .attr('r', cityDotSize)
+        .attr('fill', cityDotColor)
+        .attr('stroke', 'white').attr('stroke-width', 0.5);
+      g.append('text')
+        .attr('x', pt[0] + cityDotSize + 2).attr('y', pt[1])
+        .attr('dominant-baseline','middle')
+        .attr('font-size', cityLabelSize)
+        .attr('font-family',"'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif")
+        .attr('fill', cityLabelColor)
+        .attr('stroke','white').attr('stroke-width','2')
+        .attr('paint-order','stroke')
+        .text(c.n);
+    });
+  });
 }
 
 // =====================================================
@@ -1646,6 +1818,8 @@ function saveData() {
     provincePaintMap:Object.fromEntries(provincePaintMap),
     provinceLayerCountries:[...provinceLayerCountries],
     colorLabels:Object.fromEntries(colorLabels),
+    cityLayerCountries:[...cityLayerCountries],
+    cityVisible:{...cityVisible},
   };
   const blob = new Blob([JSON.stringify(obj,null,2)],{type:'application/json'});
   const a = document.createElement('a'); a.href=URL.createObjectURL(blob);
@@ -1665,6 +1839,11 @@ function loadData(ev) {
         Object.entries(obj.provincePaintMap).forEach(([k,v])=>provincePaintMap.set(k,v));
       }
       if(obj.colorLabels){colorLabels.clear();Object.entries(obj.colorLabels).forEach(([k,v])=>colorLabels.set(k,v));}
+      if(obj.cityLayerCountries && obj.cityLayerCountries.length){
+        cityLayerCountries=[...obj.cityLayerCountries];
+        cityVisible=obj.cityVisible||{};
+        loadCitiesData().then(()=>{renderCityTags();renderCityList();redrawCities();}).catch(e=>console.warn(e));
+      }
       if(obj.provinceLayerCountries && obj.provinceLayerCountries.length){
         provinceLayerCountries = [...obj.provinceLayerCountries];
         Promise.all(provinceLayerCountries.map(iso2=>loadProvinceData(iso2))).then(()=>{
@@ -1685,6 +1864,8 @@ function clearAll() {
   paintMap.clear();
   provincePaintMap.clear();
   colorLabels.clear();
+  cityLayerCountries = [];
+  cityVisible = {};
   provinceLayerCountries=[];
   gPoly.selectAll('path').attr('fill',landColor);
   if(gProvince) gProvince.selectAll('path').remove();
