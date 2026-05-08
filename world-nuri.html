@@ -126,7 +126,7 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
   <button class="hamburger" id="hamburger" onclick="toggleDrawer()"><span></span><span></span><span></span></button>
   <div class="logo">🌍</div>
   <div>
-    <div class="title">せかい ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v1.3.2</span></div>
+    <div class="title">せかい ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v1.3.3</span></div>
     <div class="subtitle">せかいの くに・しゅう ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -322,6 +322,16 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
         <button class="btn" style="margin-top:0;width:auto;padding:4px 8px;flex-shrink:0;" onclick="addCityLayer()">＋</button>
       </div>
       <div class="pref-tags" id="city-tags"></div>
+      <div style="margin-top:6px;">
+        <div class="slider-row">
+          <span class="slider-label" style="font-size:10px;">じんこう</span>
+          <input type="range" id="city-pop-filter" min="0" max="5" step="1" value="2"
+            style="flex:1;accent-color:var(--accent);"
+            oninput="setCityPopFilter(this.value)">
+          <span class="slider-val" id="city-pop-val" style="font-size:10px;min-width:40px;">10万+</span>
+        </div>
+        <div style="font-size:9px;color:var(--muted);text-align:right;">※ 首都 は かならず ひょうじ</div>
+      </div>
       <div id="city-list-wrap" style="margin-top:8px;max-height:200px;overflow-y:auto;display:none;">
         <div id="city-list"></div>
       </div>
@@ -1308,15 +1318,25 @@ function updateSvgOverlay() {
 // =====================================================
 // 都市 ひょうじ
 // =====================================================
-const CITIES_DATA_URL = 'https://tokyo26-sudo.github.io/nurichizu/data/cities_light.json';
+const CITIES_DATA_URL = 'https://tokyo26-sudo.github.io/nurichizu/data/cities_v2.json';
 let citiesData = null;
 let cityLayerCountries = [];
 let cityVisible = {};
 let cityDotColor = '#cc3333';
+let cityPopFilter = 100000; // じんこう フィルタ（人）
 let cityLabelColor = '#222222';
 let cityDotSize = 3;
 let cityLabelSize = 10;
 let gCities = null;
+
+const POP_LEVELS = [0, 10000, 100000, 500000, 1000000, 5000000];
+const POP_LABELS = ['ぜんぶ','1万+','10万+','50万+','100万+','500万+'];
+
+function setCityPopFilter(val) {
+  cityPopFilter = POP_LEVELS[parseInt(val)];
+  document.getElementById('city-pop-val').textContent = POP_LABELS[parseInt(val)];
+  redrawCities();
+}
 
 async function loadCitiesData() {
   if (citiesData) return;
@@ -1418,6 +1438,8 @@ function redrawCities() {
     cities.forEach(c => {
       const key = iso2+'|'+c.n;
       if (!cityVisible[key]) return;
+      // 首都 は じんこう フィルタ に かかわらず ひょうじ
+      if (!c.c && c.p < cityPopFilter) return;
       const pt = d3Projection([c.o, c.a]);
       if (!pt || isNaN(pt[0]) || isNaN(pt[1])) return;
       const g = gCities.append('g').style('pointer-events','none');
