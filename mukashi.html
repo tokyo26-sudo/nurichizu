@@ -199,7 +199,7 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
   <button class="hamburger" id="hamburger" onclick="toggleDrawer()"><span></span><span></span><span></span></button>
   <div class="logo">🗺️</div>
   <div>
-    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v1.0.1</span></div>
+    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v1.0.2</span></div>
     <div class="subtitle">れきしてき ぎょうせいくいき ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -1801,9 +1801,34 @@ async function capturePNG() {
 function captureSVG(mode) {
   const al = getActiveLayer();
   if (!al || !al.paintMap.size) { toast('まず ぬってからネ！'); return; }
-  const wrap = document.getElementById('map-wrap');
-  const W = wrap.clientWidth, H = wrap.clientHeight;
-  let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}"><rect width="${W}" height="${H}" fill="${landColor}"/>`;
+
+  // A4たて (mm→px @96dpi: 210mm=793px, 297mm=1123px) に よゆうを もたせた 780×1100 で うちわくを とる
+  // よこむきの けん（ひろい）も fitSize が じどう ちょうせい してくれるので OK
+  const SVG_W = 780, SVG_H = 1100;
+  const MARGIN = 20;
+
+  // ── SVGしゅつりょく せんよう の projection を つくる ──
+  // ひょうじちゅうの ぜんfeatures を あつめて fitSize する
+  const allFeatures = al.features;
+  if (!allFeatures.length) { toast('データが ないヨ！'); return; }
+
+  const geoCollection = { type: 'FeatureCollection', features: allFeatures };
+  const projection = d3.geoMercator()
+    .fitExtent([[MARGIN, MARGIN], [SVG_W - MARGIN, SVG_H - MARGIN]], geoCollection);
+  const pathGen = d3.geoPath().projection(projection);
+
+  // ── ヘルパ：feature → SVGパス文字列 ──
+  function featureToD(f) {
+    if (!f || !f.geometry) return '';
+    try { return pathGen(f) || ''; } catch(e) { return ''; }
+  }
+
+  // ── ヘルパ：GeoJSON geometry → SVGパス文字列（merged用）──
+  function geomToD(geom) {
+    if (!geom) return '';
+    const f = geom.type === 'Feature' ? geom : { type: 'Feature', geometry: geom };
+    return featureToD(f);
+  }
 
   const colorGroups = new Map();
   al.paintMap.forEach((color, code) => {
@@ -1811,13 +1836,21 @@ function captureSVG(mode) {
     colorGroups.get(color).push(code);
   });
 
+  // SVG ヘッダ（viewBox つき → Illustrator で A4 に おさまる）
+  let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${SVG_W}" height="${SVG_H}" viewBox="0 0 ${SVG_W} ${SVG_H}">`;
+  svg += `<rect width="${SVG_W}" height="${SVG_H}" fill="${seaColor}"/>`;
+
+  // りくの はいけいいろ（ぬってない エリアも ふくむ）
+  const allD = allFeatures.map(f => featureToD(f)).filter(Boolean).join('');
+  if (allD) svg += `<path fill="${landColor}" d="${allD}"/>`;
+
   if (mode === 'merged') {
     colorGroups.forEach((codes, color) => {
       let mergedPath = '';
       al.prefTopoData.forEach(({ topo, objKey }) => {
         try {
           const obj = topo.objects[objKey];
-          const merged = topojson.merge(topo, obj.geometries.filter(g => {
+          const targets = obj.geometries.filter(g => {
             const props = g.properties || {};
             const pref = props.pref || props.N03_001 || '';
             const kuni = props.kuni || '';
@@ -1825,31 +1858,42 @@ function captureSVG(mode) {
             const city = props.city || props.N03_004 || '';
             const uid = `${pref}__${kuni}__${gun}__${city}`;
             return codes.includes(uid);
-          }));
-          const d = geoPathFnGeo(merged);
+          });
+          if (!targets.length) return;
+          const merged = topojson.merge(topo, targets);
+          const d = geomToD(merged);
           if (d) mergedPath += d;
         } catch(e) {}
       });
-      if (mergedPath) svg += `<path fill="${color}" stroke="${color}" stroke-width="0.5" stroke-linejoin="round" d="${mergedPath}"/>`;
+      if (mergedPath) svg += `<path fill="${color}" stroke="${color}" stroke-width="0.3" stroke-linejoin="round" d="${mergedPath}"/>`;
     });
   } else {
+    // さかいせんあり：いろグループ べつに <g> で まとめる
     colorGroups.forEach((codes, color) => {
       const members = al.features.filter(f => codes.includes(getUniqueId(f)));
-      svg += `<g data-color="${color}">`;
-      members.forEach(f => { const d = geoPathFn(f); if (d) svg += `<path fill="${color}" d="${d}"/>`; });
-      svg += `</g>`;
+      const groupD = members.map(f => featureToD(f)).filter(Boolean).join('');
+      if (groupD) svg += `<path fill="${color}" d="${groupD}"/>`;
     });
+    // さかいせん
     if (al.borderOn && al.borderWidth > 0) {
       const painted = al.features.filter(f => al.paintMap.has(getUniqueId(f)));
-      const ap = painted.map(f => geoPathFn(f)).filter(Boolean).join('');
-      const dash = al.borderDash !== 'none' ? ` stroke-dasharray="${al.borderDash}"` : '';
-      svg += `<path fill="none" stroke="${al.borderColor}" stroke-width="${al.borderWidth}"${dash} d="${ap}"/>`;
+      const ap = painted.map(f => featureToD(f)).filter(Boolean).join('');
+      if (ap) {
+        const dash = al.borderDash !== 'none' ? ` stroke-dasharray="${al.borderDash}"` : '';
+        svg += `<path fill="none" stroke="${al.borderColor}" stroke-width="${al.borderWidth}"${dash} d="${ap}"/>`;
+      }
     }
   }
 
+  // テキスト（lat/lng → SVG projection で ざひょう へんかん）
   if (textItems.length) {
     svg += `<g>`;
-    textItems.forEach(t => { svg += `<text x="${t.x.toFixed(1)}" y="${t.y.toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="${t.size}" fill="${t.color}" font-family="sans-serif" font-weight="bold">${t.text}</text>`; });
+    textItems.forEach(t => {
+      if (t.lat == null || t.lng == null) return;
+      const [px, py] = projection([t.lng, t.lat]);
+      if (!isFinite(px) || !isFinite(py)) return;
+      svg += `<text x="${px.toFixed(1)}" y="${py.toFixed(1)}" text-anchor="middle" dominant-baseline="central" font-size="${t.size}" fill="${t.color}" font-family="sans-serif" font-weight="bold">${t.text}</text>`;
+    });
     svg += `</g>`;
   }
 
