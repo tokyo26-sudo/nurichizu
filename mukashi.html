@@ -199,7 +199,7 @@ input[type=color] { position: absolute; top: 0; left: 0; width: 100%; height: 10
   <button class="hamburger" id="hamburger" onclick="toggleDrawer()"><span></span><span></span><span></span></button>
   <div class="logo">🗺️</div>
   <div>
-    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v1.0.2</span></div>
+    <div class="title">むかしの ぬりちず <span style="font-size:10px;font-weight:400;color:var(--muted);">v1.0.3</span></div>
     <div class="subtitle">れきしてき ぎょうせいくいき ぬりわけマップ</div>
   </div>
   <div class="hd-right">
@@ -1807,12 +1807,13 @@ function captureSVG(mode) {
   const SVG_W = 780, SVG_H = 1100;
   const MARGIN = 20;
 
-  // ── SVGしゅつりょく せんよう の projection を つくる ──
-  // ひょうじちゅうの ぜんfeatures を あつめて fitSize する
-  const allFeatures = al.features;
-  if (!allFeatures.length) { toast('データが ないヨ！'); return; }
+  // ── ぬった features だけ あつめる ──
+  const paintedFeatures = al.features.filter(f => al.paintMap.has(getUniqueId(f)));
+  if (!paintedFeatures.length) { toast('まず ぬってからネ！'); return; }
 
-  const geoCollection = { type: 'FeatureCollection', features: allFeatures };
+  // ── SVGしゅつりょく せんよう の projection を つくる ──
+  // ぬった features だけ で fitExtent → アトボドの まんなかに おさまる
+  const geoCollection = { type: 'FeatureCollection', features: paintedFeatures };
   const projection = d3.geoMercator()
     .fitExtent([[MARGIN, MARGIN], [SVG_W - MARGIN, SVG_H - MARGIN]], geoCollection);
   const pathGen = d3.geoPath().projection(projection);
@@ -1837,12 +1838,8 @@ function captureSVG(mode) {
   });
 
   // SVG ヘッダ（viewBox つき → Illustrator で A4 に おさまる）
+  // はいけいは とうめい（rect なし）→ ぬったところだけ でる
   let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${SVG_W}" height="${SVG_H}" viewBox="0 0 ${SVG_W} ${SVG_H}">`;
-  svg += `<rect width="${SVG_W}" height="${SVG_H}" fill="${seaColor}"/>`;
-
-  // りくの はいけいいろ（ぬってない エリアも ふくむ）
-  const allD = allFeatures.map(f => featureToD(f)).filter(Boolean).join('');
-  if (allD) svg += `<path fill="${landColor}" d="${allD}"/>`;
 
   if (mode === 'merged') {
     colorGroups.forEach((codes, color) => {
